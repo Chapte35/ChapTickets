@@ -7,6 +7,7 @@ import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/dashboard", label: "Mon espace", icon: "home" },
   { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/dashboard/messagerie", label: "Messagerie", icon: "messagerie" },
 ];
 
 export default async function DashboardLayout({

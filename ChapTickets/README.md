@@ -279,6 +279,80 @@ ce que tu as listé (tags, couleur, checklist) — pas d'assignee, due date,
 story points ou autre attribut façon Jira complet. Si t'en veux plus,
 c'est un ajout ciblé facile, pas un refactor.
 
+## Sprint 7 — Lot B : cartes kanban stylées + messagerie par projet
+
+- **Cartes kanban repensées** (`/admin/projets`) : avatars des clients
+  rattachés (initiales, couleur déterministe par nom — pas de photo à
+  héberger), mini barre de répartition des tickets par statut, badge
+  d'alerte si des tickets urgents non résolus traînent dessus, lien
+  "Détails" qui n'apparaît qu'au survol (moins de bruit visuel par défaut).
+- **Messagerie par projet**, nouvel onglet sidebar (admin + client) :
+  une conversation par projet, totalement séparée des messages liés aux
+  tickets (table `messages_projet` distincte de `messages` — RLS quasi
+  identique mais basée directement sur `client_projets`, pas de détour par
+  les tickets).
+- Volontairement **pas de composant partagé** entre `MessageThread`
+  (tickets) et `ProjetMessageThread` (projets) malgré la ressemblance
+  visuelle quasi totale : les deux vont probablement diverger (pièces
+  jointes sur l'un, pas sur l'autre ; lecture/non-lu potentiellement
+  différent). Factoriser maintenant aurait été prématuré — dupliquer un
+  petit composant coûte moins cher que démêler une fausse abstraction
+  commune plus tard.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0007_messages_projet.sql`
+
+### Pas encore fait (volontairement, prévu pour le lot C ou plus tard)
+
+- Pas de suivi "non lu" sur la messagerie projet (contrairement aux
+  messages de ticket, qui ont `lectures_tickets` depuis le Sprint 6). Pas
+  demandé explicitement pour cette messagerie-ci — à ajouter si besoin.
+- Le kanban dont il est question dans la future "vue d'ensemble projet"
+  (lot C) sera un kanban de **tickets** par statut, pas celui-ci (qui reste
+  un kanban de **projets**). Les deux vont coexister, ne pas les confondre
+  en relisant ce README dans 3 mois.
+
+## Sprint 7 — Lot C : overview projet + dashboard admin avec graphiques
+
+Dernier lot du Sprint 7. Recharts installé (`npm install recharts`) — shadcn
+n'a pas de composants graphiques propres, juste un wrapper autour de
+Recharts, donc c'est le moteur réel derrière "des composants shadcn avec
+des stats". Couleurs de charts (`--chart-1` à `--chart-5`) ajoutées au
+thème, cohérentes clair/sombre.
+
+- **Overview projet** : `/admin/projets/[id]/overview` (admin, page séparée
+  de la fiche d'édition) et `/dashboard/projets/[id]` (client). KPIs
+  (tickets ouverts, urgents non résolus, résolus sur 7 jours, délai moyen
+  de résolution), donut de répartition par statut, histogramme par
+  priorité, courbe d'activité sur 14 jours, kanban de tickets **en lecture
+  seule** (décision de scope : même côté admin, pas de drag & drop ici —
+  la gestion réelle reste sur `/admin/tickets`, cette page est une vue de
+  synthèse, pas un outil de plus à maintenir en double).
+- **Landing client repensée** (`/dashboard`) : 0 projet → l'ancien
+  dashboard générique (tickets/messages non lus) reste affiché comme
+  filet ; 1 projet → redirection automatique vers son overview ; 2+ projets
+  → sélecteur. Comportement exactement tel que tranché plus tôt dans la
+  conversation.
+- **Dashboard admin enrichi** : les mêmes KPIs/graphiques que l'overview
+  projet, mais calculés sur l'ensemble des tickets plutôt qu'un seul
+  projet — la fonction d'agrégation (`src/lib/stats/ticket-stats.ts`) est
+  partagée entre les deux, pas dupliquée.
+
+### Pas de nouvelle migration
+
+Ce lot est purement applicatif (aucune table, aucune RLS supplémentaire) —
+tout s'appuie sur les tables déjà en place.
+
+### Limite connue sur le "délai moyen de résolution"
+
+Calculé comme `updated_at - created_at` pour les tickets résolus/fermés.
+`updated_at` n'est modifié que par un changement de statut (pas par un
+ajout de tag, de message ou de pièce jointe), donc l'approximation est
+raisonnable — mais si un ticket est rouvert puis re-résolu plusieurs fois,
+seule la dernière transition compte, pas l'historique complet. Précis à
+l'usage MVP, pas audit-grade.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase

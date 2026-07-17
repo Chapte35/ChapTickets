@@ -7,6 +7,7 @@ import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/admin/messagerie", label: "Messagerie", icon: "messagerie" },
   { href: "/admin/idees", label: "Idées", icon: "idees" },
   { href: "/admin/projets", label: "Projets", icon: "projets" },
   { href: "/admin/tags", label: "Tags", icon: "tags" },

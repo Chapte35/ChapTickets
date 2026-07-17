@@ -14,6 +14,7 @@ import {
   Home,
   Kanban,
   Tag,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ const ICONS = {
   idees: Lightbulb,
   projets: Kanban,
   tags: Tag,
+  messagerie: MessageCircle,
   clients: Users,
   home: Home,
 } satisfies Record<string, LucideIcon>;

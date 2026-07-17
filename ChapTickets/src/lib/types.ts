@@ -42,6 +42,19 @@ export const TICKET_STATUT_LABELS: Record<TicketStatut, string> = {
   ferme: "Fermé",
 };
 
+/**
+ * Classes de fond littérales pour les mini barres de répartition (cartes
+ * kanban projet). Même contrainte Tailwind JIT que TAG_COLOR_CLASSES :
+ * il faut les noms de classes complets dans le source.
+ */
+export const TICKET_STATUT_BAR_COLORS: Record<TicketStatut, string> = {
+  ouvert: "bg-blue-500",
+  en_cours: "bg-amber-500",
+  en_attente_client: "bg-purple-500",
+  resolu: "bg-green-500",
+  ferme: "bg-gray-400",
+};
+
 export const TICKET_PRIORITE_LABELS: Record<TicketPriorite, string> = {
   basse: "Basse",
   normale: "Normale",
