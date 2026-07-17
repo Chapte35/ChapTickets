@@ -16,6 +16,38 @@ Tailwind v4.
 - Schéma DB initial + RLS de base : `supabase/migrations/0001_init.sql`
 - Build + lint vérifiés OK
 
+## Sprint 1 — ce qui est fait
+
+- Connexion email/mot de passe (`/login`), déconnexion
+- **Décision prise** (cahier des charges, point ouvert) : invitation client
+  par email via `supabase.auth.admin.inviteUserByEmail` — l'admin crée le
+  compte depuis `/admin/clients`, le client reçoit un lien pour définir son
+  mot de passe. Pas de mot de passe temporaire à transmettre à la main.
+- `src/proxy.ts` protège les routes par rôle : `/admin/*` → admin only,
+  `/dashboard/*` → client only, `/` redirige vers le bon espace selon
+  connexion + rôle
+- Chaque layout (`admin/layout.tsx`, `dashboard/layout.tsx`) revérifie le
+  rôle côté serveur en plus du proxy — défense en profondeur, pas de
+  confiance aveugle en une seule couche
+- `/admin/clients` : liste des clients + formulaire d'invitation
+
+### À tester une fois Supabase configuré
+
+L'email d'invitation Supabase par défaut pointe vers l'URL du projet
+Supabase, pas vers ton app. À vérifier dans **Auth → URL Configuration** :
+`Site URL` doit pointer vers ton URL de dev/prod, sinon le lien
+d'invitation renvoie le client au mauvais endroit.
+
+### Dette technique assumée (à traiter plus tard, pas maintenant)
+
+- Pas de types Supabase générés (`supabase gen types typescript`) : les
+  requêtes `.from("profiles")` ne sont pas typées contre le vrai schéma.
+  À faire dès que le schéma se stabilise un peu, ça évite des fautes de
+  frappe sur les noms de colonnes qui ne pètent qu'à l'exécution.
+- Le rôle est relu en DB à chaque requête protégée (proxy + layout) : pas de
+  cache, pas de claim JWT custom. Fonctionnel mais pas optimal si le trafic
+  grossit.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase

@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { JetBrains_Mono } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'});
-
 
 // NB: pas de next/font/google ici volontairement — ça évite de dépendre
 // d'un fetch réseau vers fonts.googleapis.com au moment du build (source de
@@ -23,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={cn("h-full antialiased", "font-mono", jetbrainsMono.variable)}>
+    <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
