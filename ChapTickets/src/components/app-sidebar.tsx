@@ -13,6 +13,7 @@ import {
   Users,
   Home,
   Kanban,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ const ICONS = {
   tickets: Ticket,
   idees: Lightbulb,
   projets: Kanban,
+  tags: Tag,
   clients: Users,
   home: Home,
 } satisfies Record<string, LucideIcon>;

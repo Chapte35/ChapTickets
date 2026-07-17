@@ -238,6 +238,47 @@ messages devient important un jour, ça vaudra le coup de remplacer ça par
 une vraie requête agrégée (voire une colonne dénormalisée mise à jour par
 trigger). Pas un problème maintenant, juste un point à garder en tête.
 
+## Sprint 7 — Lot A : tags, checklist, pièces jointes
+
+Premier des trois lots du Sprint 7 (découpé par toi : tags/checklist + PJ,
+puis cartes stylées + messagerie, puis overview projet + dashboard charts).
+
+- **Tags globaux** (`/admin/tags`, admin uniquement pour la création/
+  suppression) : nom + couleur parmi une palette fixe de 10 (contrainte
+  Tailwind — JIT a besoin de classes littérales dans le code, pas de hex
+  arbitraire). Sélectionnables à la création de ticket (admin ET client)
+  et modifiables depuis la fiche ticket (ajout/retrait, RLS distincte de
+  la gestion des tags eux-mêmes : n'importe qui avec accès au ticket peut
+  poser un tag existant, seul l'admin peut en créer/supprimer un).
+- **Checklist par ticket** : collaborative — admin et client peuvent tous
+  les deux ajouter/cocher/supprimer des éléments (contrairement au statut
+  du ticket, qui reste admin-only). Barre de progression basée sur le
+  ratio coché/total.
+- **Pièces jointes** : Supabase Storage, bucket privé `ticket-attachments`
+  (10 Mo max/fichier, posé par la migration). Convention de chemin
+  `{ticket_id}/{uuid}-{nom}` : le premier segment sert de clé pour la RLS
+  sur `storage.objects`, qui mirror exactement la visibilité RLS déjà en
+  place sur `tickets`. Liens de téléchargement via URL signée (1h),
+  générée côté serveur à chaque affichage de la fiche — le bucket n'est
+  pas public, une URL brute ne fonctionnerait pas.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0006_tags_checklist_attachments.sql` — la plus grosse
+jusqu'ici (4 tables + policies + création du bucket Storage). Vérifie après
+coup dans **Storage** sur le dashboard Supabase que le bucket
+`ticket-attachments` existe bien : `insert into storage.buckets` en
+migration fonctionne, mais si jamais ça ne prenait pas (config différente
+d'un projet Supabase à l'autre), crée-le à la main (privé, 10 Mo) et
+relance juste les policies de la section 5 du fichier de migration.
+
+### Décision de scope explicite
+
+"Plus de champs pour la création de tickets" a été pris au sens strict de
+ce que tu as listé (tags, couleur, checklist) — pas d'assignee, due date,
+story points ou autre attribut façon Jira complet. Si t'en veux plus,
+c'est un ajout ciblé facile, pas un refactor.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase

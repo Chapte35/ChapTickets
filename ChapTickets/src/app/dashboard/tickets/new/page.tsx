@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
+import { getAllTags } from "@/lib/queries/tags";
 import { CreateTicketClientForm } from "./create-ticket-client-form";
 
 export default async function NewTicketClientPage() {
@@ -16,7 +17,10 @@ export default async function NewTicketClientPage() {
 
   if (!user) return null;
 
-  const projets = await getProjetsDuClient(supabase, user.id);
+  const [projets, tags] = await Promise.all([
+    getProjetsDuClient(supabase, user.id),
+    getAllTags(supabase),
+  ]);
 
   return (
     <Card className="max-w-lg">
@@ -30,7 +34,7 @@ export default async function NewTicketClientPage() {
             Contacte l&apos;admin.
           </p>
         ) : (
-          <CreateTicketClientForm projets={projets} />
+          <CreateTicketClientForm projets={projets} tags={tags} />
         )}
       </CardContent>
     </Card>

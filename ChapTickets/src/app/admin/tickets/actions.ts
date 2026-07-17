@@ -66,6 +66,21 @@ export async function createTicketAdmin(
   }
 
   revalidatePath("/admin/tickets");
+
+  const tagIds = formData.getAll("tag_ids").filter((v): v is string => typeof v === "string");
+  if (tagIds.length > 0) {
+    // Best-effort : si l'insertion des tags échoue, le ticket existe déjà
+    // et on ne veut pas bloquer sa création pour autant — on log plutôt
+    // que de planter, et l'admin pourra toujours ajouter les tags à la main
+    // depuis la fiche ticket.
+    const { error: tagsError } = await supabase
+      .from("ticket_tags")
+      .insert(tagIds.map((tagId) => ({ ticket_id: ticket.id, tag_id: tagId })));
+    if (tagsError) {
+      console.error("[createTicketAdmin] échec rattachement tags:", tagsError.message);
+    }
+  }
+
   redirect(`/admin/tickets/${ticket.id}`);
 }
 

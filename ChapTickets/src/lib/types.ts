@@ -144,3 +144,43 @@ export const PROJET_STATUT_LABELS: Record<ProjetStatut, string> = {
   en_pause: "En pause",
   termine: "Terminé",
 };
+
+/**
+ * Palette fixe plutôt qu'un hex libre : Tailwind (JIT) a besoin de voir les
+ * noms de classes complets et littéraux dans le code source pour les
+ * générer — impossible de construire `bg-${couleur}-500` dynamiquement.
+ * Cette map EST la liste des classes réellement utilisées.
+ */
+export const TAG_COLORS = [
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "purple",
+  "pink",
+  "gray",
+] as const;
+
+export type TagColor = (typeof TAG_COLORS)[number];
+
+export const TAG_COLOR_CLASSES: Record<TagColor, string> = {
+  red: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
+  orange: "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30",
+  amber: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  green: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30",
+  teal: "bg-teal-500/15 text-teal-700 dark:text-teal-400 border-teal-500/30",
+  blue: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  indigo: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/30",
+  purple: "bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30",
+  pink: "bg-pink-500/15 text-pink-700 dark:text-pink-400 border-pink-500/30",
+  gray: "bg-gray-500/15 text-gray-700 dark:text-gray-400 border-gray-500/30",
+};
+
+export type Tag = {
+  id: string;
+  nom: string;
+  couleur: TagColor;
+};

@@ -12,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TICKET_PRIORITES, TICKET_PRIORITE_LABELS } from "@/lib/types";
+import { TICKET_PRIORITES, TICKET_PRIORITE_LABELS, type Tag } from "@/lib/types";
 import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
+import { TagPicker } from "@/components/tag-picker";
 import { createTicketAdmin, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
@@ -21,9 +22,11 @@ const initialState: FormState = { error: null };
 export function CreateTicketAdminForm({
   projets,
   clientsParProjet,
+  tags,
 }: {
   projets: ProjetOption[];
   clientsParProjet: Record<string, ClientOption[]>;
+  tags: Tag[];
 }) {
   const [state, formAction, isPending] = useActionState(
     createTicketAdmin,
@@ -115,6 +118,11 @@ export function CreateTicketAdminForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Tags</Label>
+        <TagPicker tags={tags} />
       </div>
 
       {state.error && (

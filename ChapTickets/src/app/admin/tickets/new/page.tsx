@@ -6,13 +6,15 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { getTousLesProjets, getClientsParProjet } from "@/lib/queries/tickets";
+import { getAllTags } from "@/lib/queries/tags";
 import { CreateTicketAdminForm } from "./create-ticket-form";
 
 export default async function NewTicketAdminPage() {
   const supabase = await createClient();
-  const [projets, clientsParProjet] = await Promise.all([
+  const [projets, clientsParProjet, tags] = await Promise.all([
     getTousLesProjets(supabase),
     getClientsParProjet(supabase),
+    getAllTags(supabase),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function NewTicketAdminPage() {
           <CreateTicketAdminForm
             projets={projets}
             clientsParProjet={clientsParProjet}
+            tags={tags}
           />
         )}
       </CardContent>

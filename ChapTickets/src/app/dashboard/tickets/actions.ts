@@ -51,8 +51,25 @@ export async function createTicketClient(
   if (error) {
     return { error: `Erreur de création : ${error.message}` };
   }
+  if (!ticket) {
+    return {
+      error:
+        "Le ticket a peut-être été créé mais n'a pas pu être relu (policy RLS ?). Vérifie /dashboard/tickets.",
+    };
+  }
 
   revalidatePath("/dashboard/tickets");
+
+  const tagIds = formData.getAll("tag_ids").filter((v): v is string => typeof v === "string");
+  if (tagIds.length > 0) {
+    const { error: tagsError } = await supabase
+      .from("ticket_tags")
+      .insert(tagIds.map((tagId) => ({ ticket_id: ticket.id, tag_id: tagId })));
+    if (tagsError) {
+      console.error("[createTicketClient] échec rattachement tags:", tagsError.message);
+    }
+  }
+
   redirect(`/dashboard/tickets/${ticket.id}`);
 }
 
