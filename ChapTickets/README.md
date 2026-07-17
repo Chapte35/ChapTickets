@@ -173,6 +173,41 @@ layouts (`admin/layout.tsx`, `dashboard/layout.tsx`).
   preset shadcn (Sprint 2), simplement jamais activés — ce sprint active
   l'interrupteur, ne redessine rien
 
+## Sprint 5 — ce qui est fait
+
+- **CRUD projets complet** (`/admin/projets`) — ça n'existait pas avant,
+  tu bricolais ça dans le Table Editor depuis le Sprint 2. Fini.
+- **Kanban avec vrai drag & drop** (`@dnd-kit/core`), colonnes = statuts.
+  Update optimiste : la carte bouge tout de suite, se remet en place toute
+  seule si le serveur refuse (déconnexion, RLS, etc.)
+- **Décision prise** (statuts jamais définis avant ce sprint) : 4 colonnes
+  fixes — À démarrer / En cours / En pause / Terminé. L'ordre dans
+  `PROJET_STATUTS` (`src/lib/types.ts`) définit l'ordre des colonnes, pas
+  juste une liste.
+- Fiche projet (`/admin/projets/[id]`) : édition nom/description, statut
+  (redondant avec le kanban mais pratique sans y retourner), gestion des
+  clients rattachés (ajout/retrait, many-to-many via `client_projets`)
+- Suppression de projet : bloquée par la DB si des tickets y sont encore
+  rattachés (`on delete restrict` posé dès la migration 0001) — le message
+  de confirmation le rappelle avant que tu cliques et tombes sur une
+  erreur Postgres opaque.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0004_projet_statut_constraint.sql` — verrouille les
+valeurs de `projets.statut` aux 4 ci-dessus. Si tu as des projets de test
+avec un statut hors de cette liste (peu probable vu que le défaut était
+`'en_cours'`, qui reste valide), la migration échouera : vérifie avant.
+
+### Point d'attention découvert en cours de route (Sprint 4 → Sprint 5)
+
+Le bug de sérialisation React (icônes passées en props depuis un Server
+Component) qu'on a corrigé après le Sprint "sidebar" — j'ai vérifié qu'il
+ne se reproduit pas ici : tous les nouveaux composants client
+(`kanban-board.tsx`, `projet-edit-form.tsx`, etc.) importent leurs Server
+Actions directement plutôt que de les recevoir en props. Pattern à garder
+pour la suite : une Server Action s'importe, elle ne se transmet pas.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase

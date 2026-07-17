@@ -8,6 +8,7 @@ const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
   { href: "/admin/idees", label: "Idées", icon: "idees" },
+  { href: "/admin/projets", label: "Projets", icon: "projets" },
   { href: "/admin/clients", label: "Clients", icon: "clients" },
 ];
 

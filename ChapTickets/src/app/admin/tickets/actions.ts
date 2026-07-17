@@ -52,6 +52,18 @@ export async function createTicketAdmin(
   if (error) {
     return { error: `Erreur de création : ${error.message}` };
   }
+  if (!ticket) {
+    // Filet de sécurité gardé : garantit qu'on ne plante jamais sur
+    // `ticket.id` si Supabase renvoie un jour "pas d'erreur mais pas de
+    // ligne" (RLS de relecture différente de la RLS d'insertion). Jamais
+    // observé en pratique jusqu'ici — le vrai bug rencontré était que le
+    // formulaire renvoyait "Client requis" (normal : projet sans client
+    // rattaché), pas ce cas-ci. Gardé par prudence, pas par superstition.
+    return {
+      error:
+        "Le ticket a peut-être été créé mais n'a pas pu être relu (policy RLS ?). Vérifie /admin/tickets.",
+    };
+  }
 
   revalidatePath("/admin/tickets");
   redirect(`/admin/tickets/${ticket.id}`);

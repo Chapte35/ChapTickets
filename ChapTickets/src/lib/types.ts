@@ -123,3 +123,24 @@ export function ideeStatutBadgeVariant(
       return "destructive";
   }
 }
+
+/**
+ * Statuts de projet, cf. supabase/migrations/0004_projet_statut_constraint.sql.
+ * L'ORDRE ici définit l'ordre des colonnes du kanban (/admin/projets) — pas
+ * juste une liste de valeurs, un contrat visuel.
+ */
+export type ProjetStatut = "a_demarrer" | "en_cours" | "en_pause" | "termine";
+
+export const PROJET_STATUTS: readonly ProjetStatut[] = [
+  "a_demarrer",
+  "en_cours",
+  "en_pause",
+  "termine",
+] as const;
+
+export const PROJET_STATUT_LABELS: Record<ProjetStatut, string> = {
+  a_demarrer: "À démarrer",
+  en_cours: "En cours",
+  en_pause: "En pause",
+  termine: "Terminé",
+};
