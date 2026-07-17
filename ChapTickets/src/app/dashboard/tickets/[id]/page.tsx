@@ -19,6 +19,7 @@ import {
 } from "@/lib/types";
 import { ReopenRequestButton } from "./reopen-request-button";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
+import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { postMessageClient } from "../actions";
 
 export default async function ClientTicketDetailPage({
@@ -64,6 +65,7 @@ export default async function ClientTicketDetailPage({
 
   return (
     <Card className="max-w-2xl">
+      <MarkTicketRead ticketId={ticket.id} />
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>

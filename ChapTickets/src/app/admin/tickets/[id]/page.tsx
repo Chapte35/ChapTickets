@@ -20,6 +20,7 @@ import {
   type DemandeReouverture,
 } from "./reopen-requests-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
+import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { postMessageAdmin } from "../actions";
 
 export default async function AdminTicketDetailPage({
@@ -71,6 +72,7 @@ export default async function AdminTicketDetailPage({
 
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
+      <MarkTicketRead ticketId={ticket.id} />
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">

@@ -208,6 +208,36 @@ ne se reproduit pas ici : tous les nouveaux composants client
 Actions directement plutôt que de les recevoir en props. Pattern à garder
 pour la suite : une Server Action s'importe, elle ne se transmet pas.
 
+## Sprint 6 — ce qui est fait
+
+- **Dashboard admin** (`/admin`) : urgences (priorité urgente, pas encore
+  résolues/fermées), tickets récents, projets en cours avec compteur de
+  tickets
+- **Dashboard client** (`/dashboard`) : messages non lus, tickets récents
+- **Nouvelle infrastructure nécessaire** : rien dans le schéma ne traçait
+  ce qu'un utilisateur avait "déjà vu" — `messages non lus` était
+  irréalisable sans ça. Table `lectures_tickets` (Sprint 6, migration
+  0005) : un horodatage par couple ticket/utilisateur, mis à jour à
+  chaque visite de la fiche ticket (`src/components/mark-ticket-read.tsx`,
+  effet client au montage — pas une mutation cachée dans le rendu d'un
+  Server Component, cf. commentaire dans le fichier pour le pourquoi).
+- Le "polish UI shadcn" du découpage initial était déjà largement couvert
+  par la sidebar + le dark mode faits avant ce sprint. Rien d'autre ajouté
+  ici à ce titre.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0005_lectures_tickets.sql`
+
+### Limite connue, assumée
+
+Le calcul des non-lus se fait en récupérant tous les messages concernés
+et en comparant en mémoire côté serveur (pas de requête SQL agrégée
+unique) — largement suffisant à l'échelle d'un MVP, mais si le volume de
+messages devient important un jour, ça vaudra le coup de remplacer ça par
+une vraie requête agrégée (voire une colonne dénormalisée mise à jour par
+trigger). Pas un problème maintenant, juste un point à garder en tête.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase
