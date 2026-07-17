@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import { logout } from "@/app/login/actions";
+import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
+
+const NAV_ITEMS: SidebarItem[] = [
+  { href: "/dashboard", label: "Mon espace", icon: "home" },
+  { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
+];
 
 export default async function DashboardLayout({
   children,
@@ -24,24 +29,18 @@ export default async function DashboardLayout({
 
   if (profile?.role !== "client") redirect("/admin");
 
+  const cookieStore = await cookies();
+  const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b px-6 py-3 flex items-center justify-between">
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/dashboard" className="font-semibold">
-            Mon espace
-          </Link>
-          <Link href="/dashboard/tickets" className="text-muted-foreground hover:text-foreground">
-            Tickets
-          </Link>
-        </nav>
-        <form action={logout}>
-          <Button type="submit" variant="ghost" size="sm">
-            Se déconnecter
-          </Button>
-        </form>
-      </header>
-      <main className="flex-1 p-6">{children}</main>
+    <div className="flex min-h-screen">
+      <AppSidebar
+        title="Mon espace"
+        items={NAV_ITEMS}
+        defaultCollapsed={defaultCollapsed}
+        logoutAction={logout}
+      />
+      <main className="flex-1 p-6 overflow-x-auto">{children}</main>
     </div>
   );
 }

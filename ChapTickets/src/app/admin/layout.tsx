@@ -1,8 +1,15 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import { logout } from "@/app/login/actions";
+import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
+
+const NAV_ITEMS: SidebarItem[] = [
+  { href: "/admin", label: "Dashboard", icon: "dashboard" },
+  { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/admin/idees", label: "Idées", icon: "idees" },
+  { href: "/admin/clients", label: "Clients", icon: "clients" },
+];
 
 /**
  * Le proxy (src/proxy.ts) bloque déjà l'accès à /admin pour les non-admins,
@@ -30,30 +37,18 @@ export default async function AdminLayout({
 
   if (profile?.role !== "admin") redirect("/dashboard");
 
+  const cookieStore = await cookies();
+  const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b px-6 py-3 flex items-center justify-between">
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/admin" className="font-semibold">
-            Admin
-          </Link>
-          <Link href="/admin/tickets" className="text-muted-foreground hover:text-foreground">
-            Tickets
-          </Link>
-          <Link href="/admin/idees" className="text-muted-foreground hover:text-foreground">
-            Idées
-          </Link>
-          <Link href="/admin/clients" className="text-muted-foreground hover:text-foreground">
-            Clients
-          </Link>
-        </nav>
-        <form action={logout}>
-          <Button type="submit" variant="ghost" size="sm">
-            Se déconnecter
-          </Button>
-        </form>
-      </header>
-      <main className="flex-1 p-6">{children}</main>
+    <div className="flex min-h-screen">
+      <AppSidebar
+        title="Admin"
+        items={NAV_ITEMS}
+        defaultCollapsed={defaultCollapsed}
+        logoutAction={logout}
+      />
+      <main className="flex-1 p-6 overflow-x-auto">{children}</main>
     </div>
   );
 }

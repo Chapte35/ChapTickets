@@ -141,6 +141,38 @@ ajouter sans que le besoin soit confirmé).
 `supabase/migrations/0003_idee_projet_link.sql` — un simple `alter table`,
 rien de destructeur.
 
+## Layout — sidebar collapsible (avant Sprint 5)
+
+Remplace la navbar horizontale par une sidebar façon Supabase, sur les deux
+layouts (`admin/layout.tsx`, `dashboard/layout.tsx`).
+
+- **Composant partagé** : `src/components/app-sidebar.tsx`, réutilisé par
+  les deux côtés avec des `items` différents
+- **État persisté en cookie** (`sidebar_collapsed`, 1 an, non httpOnly —
+  c'est une préférence d'affichage, pas une donnée sensible), lu côté
+  serveur dans chaque layout pour éviter un flash "ouvert puis réduit" au
+  chargement de page
+- **Mode réduit** : icônes seules + tooltips (nouveau composant shadcn
+  `tooltip.tsx`, `@radix-ui/react-tooltip`)
+- Fait maintenant plutôt qu'au Sprint 6 ("polish UI") comme prévu au
+  découpage initial : le Sprint 5 (vue kanban/timeline des projets) a
+  besoin de largeur horizontale, autant avoir la disposition finale avant
+  de construire une vue dedans plutôt que de la re-caser après coup.
+
+## Layout — dark mode (avant Sprint 5, dans la foulée de la sidebar)
+
+- `next-themes`, thème **sombre par défaut**, pas de suivi des préférences
+  système (choix explicite : `enableSystem={false}` dans
+  `src/app/layout.tsx`)
+- Toggle clair/sombre dans la sidebar, juste au-dessus du bouton de
+  déconnexion, même traitement icône-seule + tooltip en mode réduit
+- Persisté en `localStorage` par next-themes (comportement standard de la
+  lib, différent du cookie de la sidebar — ce n'est pas une incohérence,
+  juste deux mécanismes différents pour deux préférences différentes)
+- Les tokens CSS `.dark` étaient déjà présents depuis l'application du
+  preset shadcn (Sprint 2), simplement jamais activés — ce sprint active
+  l'interrupteur, ne redessine rien
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase
