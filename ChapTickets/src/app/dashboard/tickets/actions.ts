@@ -2,26 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireClient } from "@/lib/auth/guards";
 import { TICKET_PRIORITES } from "@/lib/types";
 
 export type FormState = { error: string | null };
-
-async function requireClient() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, isClient: false as const };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  return { supabase, isClient: profile?.role === "client", userId: user.id };
-}
 
 export async function createTicketClient(
   _prevState: FormState,
@@ -100,6 +84,39 @@ export async function demanderReouverture(
       error:
         "Impossible d'envoyer la demande (le ticket n'est peut-être plus éligible à une réouverture).",
     };
+  }
+
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
+  return { error: null };
+}
+
+export async function postMessageClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const ticketId = formData.get("ticket_id");
+  const contenu = formData.get("contenu");
+
+  if (typeof ticketId !== "string" || !ticketId) {
+    return { error: "Ticket invalide." };
+  }
+  if (typeof contenu !== "string" || !contenu.trim()) {
+    return { error: "Message vide." };
+  }
+
+  const { error } = await supabase.from("messages").insert({
+    ticket_id: ticketId,
+    auteur_id: userId,
+    contenu: contenu.trim(),
+  });
+
+  if (error) {
+    // La policy RLS refuse l'insert si le ticket n'est plus visible par ce
+    // client (edge case rare) : message reformulé plutôt que l'erreur brute.
+    return { error: "Impossible d'envoyer le message." };
   }
 
   revalidatePath(`/dashboard/tickets/${ticketId}`);

@@ -94,3 +94,32 @@ export function ticketPrioriteBadgeVariant(
 ): "default" | "secondary" | "outline" | "destructive" {
   return priorite === "urgente" ? "destructive" : "outline";
 }
+
+export const IDEE_STATUTS: readonly IdeeProjetStatut[] = [
+  "idee",
+  "a_explorer",
+  "valide",
+  "abandonne",
+] as const;
+
+export const IDEE_STATUT_LABELS: Record<IdeeProjetStatut, string> = {
+  idee: "Idée",
+  a_explorer: "À explorer",
+  valide: "Validée",
+  abandonne: "Abandonnée",
+};
+
+export function ideeStatutBadgeVariant(
+  statut: IdeeProjetStatut
+): "default" | "secondary" | "outline" | "destructive" {
+  switch (statut) {
+    case "idee":
+      return "outline";
+    case "a_explorer":
+      return "secondary";
+    case "valide":
+      return "default";
+    case "abandonne":
+      return "destructive";
+  }
+}

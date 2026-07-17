@@ -18,6 +18,8 @@ import {
   type TicketPriorite,
 } from "@/lib/types";
 import { ReopenRequestButton } from "./reopen-request-button";
+import { MessageThread, type MessageRow } from "@/components/message-thread";
+import { postMessageClient } from "../actions";
 
 export default async function ClientTicketDetailPage({
   params,
@@ -27,19 +29,31 @@ export default async function ClientTicketDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: ticket, error }, { data: demandes }] = await Promise.all([
-    supabase
-      .from("tickets")
-      .select("id, titre, description, statut, priorite, created_at, projets(nom)")
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("demandes_reouverture")
-      .select("statut")
-      .eq("ticket_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1),
-  ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: ticket, error }, { data: demandes }, { data: messages }] =
+    await Promise.all([
+      supabase
+        .from("tickets")
+        .select("id, titre, description, statut, priorite, created_at, projets(nom)")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("demandes_reouverture")
+        .select("statut")
+        .eq("ticket_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("messages")
+        .select(
+          "id, contenu, created_at, auteur_id, profiles(role, full_name, email)"
+        )
+        .eq("ticket_id", id)
+        .order("created_at", { ascending: true }),
+    ]);
 
   if (error || !ticket) notFound();
 
@@ -75,6 +89,14 @@ export default async function ClientTicketDetailPage({
           <ReopenRequestButton
             ticketId={ticket.id}
             demandeEnCours={demandes?.[0] ?? null}
+          />
+        )}
+        {user && (
+          <MessageThread
+            ticketId={ticket.id}
+            messages={(messages ?? []) as unknown as MessageRow[]}
+            currentUserId={user.id}
+            action={postMessageClient}
           />
         )}
       </CardContent>

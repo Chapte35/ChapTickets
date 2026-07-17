@@ -92,6 +92,55 @@ la 0001 (SQL Editor ou `supabase db push`).
   build (erreur runtime, pas de type-check possible sans types générés —
   encore une raison de faire `supabase gen types typescript` bientôt).
 
+## Sprint 3 — ce qui est fait
+
+- Thread de messages par ticket, admin + client, sur `/admin/tickets/[id]`
+  et `/dashboard/tickets/[id]`
+- **Pas de nouvelle migration** : la RLS sur `messages` était déjà posée au
+  Sprint 0 (cloisonnement par visibilité du ticket, cf. section 4.3 du
+  cahier). Ce sprint n'a ajouté que l'UI et les Server Actions.
+- Messages "libres" (non rattachés à un ticket, section 4.3 "à trancher")
+  **non implémentés** — le champ `messages.ticket_id` reste nullable en
+  base par anticipation, mais aucune UI ne permet d'en créer. Décision à
+  prendre explicitement si tu veux ça.
+- Bulle admin/client visuellement distinguée (couleur + label "Admin" vs
+  nom du client) via le rôle du profil auteur.
+
+### Point d'attention : pas de rafraîchissement automatique en temps réel
+
+Si l'admin et le client ont chacun la page ouverte en même temps, aucun des
+deux ne voit le message de l'autre apparaître tout seul — il faut recharger
+la page. Pas de WebSocket/Supabase Realtime branché, ce n'était pas dans le
+périmètre demandé pour ce sprint. À évaluer plus tard si l'usage réel en a
+besoin (Supabase Realtime s'y prête bien, mais c'est un morceau de
+complexité en plus — gestion des abonnements, cleanup, etc. — à ne pas
+ajouter sans que le besoin soit confirmé).
+
+## Sprint 4 — ce qui est fait
+
+- CRUD idées de projets (`/admin/idees`) : titre, description, statut
+  (idée / à explorer / validée / abandonnée). Backlog 100% privé — RLS
+  n'accorde aucun accès au rôle client, il n'y a même pas de policy à
+  désactiver, juste aucune (cf. migration 0001, section "idees_projets").
+- **Décision prise** (répondu par toi) : idées et projets **pas liés
+  obligatoirement**. Nouvelle colonne `idees_projets.projet_id`, nullable,
+  purement traçabilité. Un projet peut exister sans idée d'origine, une
+  idée peut ne jamais devenir un projet.
+- Bouton "Transformer en projet" : crée une ligne dans `projets` (nom
+  éditable, pré-rempli avec le titre de l'idée) et rattache l'idée via
+  `projet_id`. Ne touche pas au statut de l'idée — rien ne l'y oblige.
+- **Refactor** : `requireAdmin()`/`requireClient()` centralisés dans
+  `src/lib/auth/guards.ts`. Étaient dupliqués dans
+  `admin/tickets/actions.ts` et `dashboard/tickets/actions.ts` ; dès
+  qu'un 3e fichier (`admin/idees/actions.ts`) en avait besoin, la
+  duplication n'était plus défendable. Si tu ajoutes de nouvelles Server
+  Actions, importe depuis ce fichier plutôt que de recopier le pattern.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0003_idee_projet_link.sql` — un simple `alter table`,
+rien de destructeur.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase

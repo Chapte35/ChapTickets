@@ -2,33 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/guards";
 import { TICKET_STATUTS, TICKET_PRIORITES } from "@/lib/types";
 
 export type FormState = { error: string | null };
-
-/**
- * Toutes les actions ci-dessous revérifient le rôle admin elles-mêmes,
- * même si les pages qui les appellent sont déjà protégées par le layout
- * (admin/layout.tsx) et le proxy. Une Server Action est un endpoint réseau
- * indépendant : elle doit se défendre toute seule, pas compter sur le
- * contexte de rendu qui l'entoure.
- */
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, isAdmin: false as const };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  return { supabase, isAdmin: profile?.role === "admin", userId: user.id };
-}
 
 export async function createTicketAdmin(
   _prevState: FormState,
@@ -161,6 +138,37 @@ export async function traiterDemandeReouverture(
 
   if (demandeError) {
     return { error: `Erreur demande : ${demandeError.message}` };
+  }
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  return { error: null };
+}
+
+export async function postMessageAdmin(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin, userId } = await requireAdmin();
+  if (!isAdmin || !userId) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const contenu = formData.get("contenu");
+
+  if (typeof ticketId !== "string" || !ticketId) {
+    return { error: "Ticket invalide." };
+  }
+  if (typeof contenu !== "string" || !contenu.trim()) {
+    return { error: "Message vide." };
+  }
+
+  const { error } = await supabase.from("messages").insert({
+    ticket_id: ticketId,
+    auteur_id: userId,
+    contenu: contenu.trim(),
+  });
+
+  if (error) {
+    return { error: `Erreur d'envoi : ${error.message}` };
   }
 
   revalidatePath(`/admin/tickets/${ticketId}`);

@@ -19,6 +19,8 @@ import {
   ReopenRequestsPanel,
   type DemandeReouverture,
 } from "./reopen-requests-panel";
+import { MessageThread, type MessageRow } from "@/components/message-thread";
+import { postMessageAdmin } from "../actions";
 
 export default async function AdminTicketDetailPage({
   params,
@@ -28,22 +30,34 @@ export default async function AdminTicketDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: ticket, error }, { data: demandes }] = await Promise.all([
-    supabase
-      .from("tickets")
-      .select(
-        "id, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
-      )
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("demandes_reouverture")
-      .select(
-        "id, message, statut, created_at, profiles:profiles!demandes_reouverture_demande_par_fkey(email, full_name)"
-      )
-      .eq("ticket_id", id)
-      .order("created_at", { ascending: false }),
-  ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: ticket, error }, { data: demandes }, { data: messages }] =
+    await Promise.all([
+      supabase
+        .from("tickets")
+        .select(
+          "id, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        )
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("demandes_reouverture")
+        .select(
+          "id, message, statut, created_at, profiles:profiles!demandes_reouverture_demande_par_fkey(email, full_name)"
+        )
+        .eq("ticket_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("messages")
+        .select(
+          "id, contenu, created_at, auteur_id, profiles(role, full_name, email)"
+        )
+        .eq("ticket_id", id)
+        .order("created_at", { ascending: true }),
+    ]);
 
   if (error || !ticket) notFound();
 
@@ -80,6 +94,14 @@ export default async function AdminTicketDetailPage({
             ticketId={ticket.id}
             demandes={(demandes ?? []) as unknown as DemandeReouverture[]}
           />
+          {user && (
+            <MessageThread
+              ticketId={ticket.id}
+              messages={(messages ?? []) as unknown as MessageRow[]}
+              currentUserId={user.id}
+              action={postMessageAdmin}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
