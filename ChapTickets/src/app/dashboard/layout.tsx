@@ -27,9 +27,14 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b px-6 py-3 flex items-center justify-between">
-        <Link href="/dashboard" className="font-semibold text-sm">
-          Mon espace
-        </Link>
+        <nav className="flex items-center gap-4 text-sm">
+          <Link href="/dashboard" className="font-semibold">
+            Mon espace
+          </Link>
+          <Link href="/dashboard/tickets" className="text-muted-foreground hover:text-foreground">
+            Tickets
+          </Link>
+        </nav>
         <form action={logout}>
           <Button type="submit" variant="ghost" size="sm">
             Se déconnecter

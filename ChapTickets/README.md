@@ -48,6 +48,50 @@ d'invitation renvoie le client au mauvais endroit.
   cache, pas de claim JWT custom. Fonctionnel mais pas optimal si le trafic
   grossit.
 
+## Sprint 2 — ce qui est fait
+
+- CRUD tickets : création (admin + client), liste avec filtres (statut,
+  priorité, projet, et client côté admin), vue détail
+- **Décision prise** (répondu par toi) : seul l'admin change le statut d'un
+  ticket. Aucune policy `UPDATE` sur `tickets` pour le rôle client — ce
+  n'est pas juste une règle applicative, c'est imposé par la RLS.
+- Demande de réouverture : un client sur un ticket `résolu`/`fermé` peut
+  envoyer une demande (table à part `demandes_reouverture`, insert-only
+  pour le client). L'admin accepte (→ ticket repasse `ouvert`) ou refuse,
+  depuis `/admin/tickets/[id]`.
+- **Hypothèse prise faute de réponse** : formulaire admin de création =
+  projet d'abord, puis client filtré parmi ceux rattachés à ce projet
+  (many-to-many oblige). Dis-moi si c'est pas ce que tu voulais, c'est un
+  refactor rapide du composant `create-ticket-form.tsx`.
+
+### ⚠️ Pour tester, il te faut au moins un projet + un rattachement client
+
+Il n'y a **volontairement aucune UI de création de projet** à ce stade —
+c'est prévu au Sprint 4/5 du découpage (idées de projets → projet formel).
+En attendant, crée tes données de test via le **Table Editor** Supabase :
+
+1. Table `projets` : insère une ligne (`nom` suffit)
+2. Table `client_projets` : insère une ligne reliant un `client_id`
+   (un id de la table `profiles` où `role = 'client'`) au `projet_id`
+   créé juste avant
+
+Sans ce rattachement, les selects "projet"/"client" des formulaires de
+création de ticket seront vides — c'est le comportement RLS attendu, pas
+un bug.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0002_reopen_requests.sql` — même procédure que pour
+la 0001 (SQL Editor ou `supabase db push`).
+
+### Dette technique supplémentaire
+
+- Les jointures Supabase (`profiles!tickets_client_id_fkey`) reposent sur
+  les noms de contraintes FK auto-générés par Postgres. Si un jour tu
+  renommes une contrainte, ces requêtes cassent silencieusement côté
+  build (erreur runtime, pas de type-check possible sans types générés —
+  encore une raison de faire `supabase gen types typescript` bientôt).
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase
