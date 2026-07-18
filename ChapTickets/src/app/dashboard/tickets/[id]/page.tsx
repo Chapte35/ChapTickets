@@ -63,7 +63,7 @@ export default async function ClientTicketDetailPage({
       .limit(1),
     supabase
       .from("messages")
-      .select("id, contenu, created_at, auteur_id, profiles(role, full_name, email)")
+      .select("id, contenu, created_at, auteur_id, profiles!messages_auteur_id_fkey(role, full_name, email)")
       .eq("ticket_id", id)
       .order("created_at", { ascending: true }),
     supabase.from("ticket_tags").select("tags(id, nom, couleur)").eq("ticket_id", id),

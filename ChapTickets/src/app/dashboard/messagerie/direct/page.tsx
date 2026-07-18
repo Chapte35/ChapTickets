@@ -13,7 +13,7 @@ export default async function MessagerieDirecteClientPage() {
 
   const { data: messages } = await supabase
     .from("messages")
-    .select("id, contenu, created_at, auteur_id, profiles(role, full_name, email)")
+    .select("id, contenu, created_at, auteur_id, profiles!messages_auteur_id_fkey(role, full_name, email)")
     .eq("client_id", user.id)
     .is("ticket_id", null)
     .order("created_at", { ascending: true });
