@@ -16,6 +16,9 @@ export async function createRelease(
   const nom = formData.get("nom");
   const date = formData.get("date");
   const description = formData.get("description");
+  const ticketIds = formData
+    .getAll("ticket_ids")
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
 
   if (typeof projetId !== "string" || !projetId) {
     return { error: "Projet requis." };
@@ -27,19 +30,36 @@ export async function createRelease(
     return { error: "Date requise." };
   }
 
-  const { error } = await supabase.from("releases").insert({
-    projet_id: projetId,
-    nom: nom.trim(),
-    date,
-    description: typeof description === "string" && description.trim() ? description.trim() : null,
-  });
+  const { data: release, error } = await supabase
+    .from("releases")
+    .insert({
+      projet_id: projetId,
+      nom: nom.trim(),
+      date,
+      description: typeof description === "string" && description.trim() ? description.trim() : null,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    return { error: `Erreur de création : ${error.message}` };
+  if (error || !release) {
+    return { error: `Erreur de création : ${error?.message ?? "inconnue"}` };
+  }
+
+  if (ticketIds.length > 0) {
+    const { error: assignError } = await supabase
+      .from("tickets")
+      .update({ release_id: release.id })
+      .in("id", ticketIds);
+    if (assignError) {
+      // La release existe déjà à ce stade — pas la peine de tout annuler
+      // pour un échec d'assignation, mais on prévient que c'est partiel.
+      return { error: `Release créée, mais échec d'assignation des tickets : ${assignError.message}` };
+    }
   }
 
   revalidatePath("/admin/calendrier");
   revalidatePath(`/admin/projets/${projetId}/overview`);
+  revalidatePath("/admin/tickets");
   return { error: null };
 }
 

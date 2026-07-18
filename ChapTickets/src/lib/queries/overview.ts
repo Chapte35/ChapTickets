@@ -9,7 +9,7 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
       supabase.from("projets").select("id, nom, description, statut").eq("id", projetId).single(),
       supabase
         .from("tickets")
-        .select("id, titre, statut, priorite, created_at, updated_at")
+        .select("id, titre, statut, priorite, created_at, updated_at, release_id")
         .eq("projet_id", projetId),
       supabase.from("client_projets").select("profiles(id, full_name, email)").eq("projet_id", projetId),
       getReleasesDuProjet(supabase, projetId),
@@ -30,6 +30,7 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
 
   const tickets = (ticketsRows ?? []) as unknown as (TicketPourStats & {
     titre: string;
+    release_id: string | null;
   })[];
 
   const stats = buildTicketStats(tickets, 14);

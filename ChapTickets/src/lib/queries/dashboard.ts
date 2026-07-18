@@ -3,6 +3,7 @@ import type { TicketStatut, TicketPriorite } from "@/lib/types";
 
 export type TicketSummary = {
   id: string;
+  numero: number;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -31,7 +32,7 @@ export async function getAdminDashboardData(supabase: SupabaseClient) {
       supabase
         .from("tickets")
         .select(
-          "id, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+          "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
         )
         .eq("priorite", "urgente")
         .not("statut", "in", "(resolu,ferme)")
@@ -40,7 +41,7 @@ export async function getAdminDashboardData(supabase: SupabaseClient) {
       supabase
         .from("tickets")
         .select(
-          "id, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+          "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
         )
         .order("created_at", { ascending: false })
         .limit(5),
@@ -71,7 +72,7 @@ export async function getClientDashboardData(
 ) {
   const { data: tickets } = await supabase
     .from("tickets")
-    .select("id, titre, description, statut, priorite, created_at, projets(nom)")
+    .select("id, numero, titre, description, statut, priorite, created_at, projets(nom)")
     .order("created_at", { ascending: false })
     .limit(10);
 

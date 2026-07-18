@@ -399,3 +399,27 @@ export async function deleteTicketsBulk(
   revalidatePath("/admin/calendrier");
   return { supprimes, echecs: ticketIds.length - supprimes };
 }
+
+/**
+ * Changement de statut en masse (tableau /admin/tickets, sprint 12) — un
+ * appel à updateTicketStatutInterne par ticket plutôt qu'un update SQL en
+ * masse, pour que chaque changement passe par la même logique (validation,
+ * historique) que le select individuel de la fiche ticket. Moins
+ * performant sur un très gros volume, mais garde une seule source de
+ * vérité pour "qu'est-ce qu'un changement de statut".
+ */
+export async function updateTicketsStatutBulk(
+  ticketIds: string[],
+  statut: string
+): Promise<{ maj: number; echecs: number }> {
+  const { isAdmin } = await requireAdmin();
+  if (!isAdmin) return { maj: 0, echecs: ticketIds.length };
+
+  let maj = 0;
+  for (const id of ticketIds) {
+    const result = await updateTicketStatutInterne(id, statut);
+    if (!result.error) maj++;
+  }
+
+  return { maj, echecs: ticketIds.length - maj };
+}

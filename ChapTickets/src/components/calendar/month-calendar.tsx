@@ -22,6 +22,7 @@ export type CalendrierInteractif = {
   projets: ProjetOption[];
   projetFiltre?: string;
   ticketsAssignables: TicketAssignable[];
+  ticketsSansReleaseParProjet: Record<string, { id: string; titre: string }[]>;
   createReleaseAction: (prevState: FormState, formData: FormData) => Promise<FormState>;
   assignDateAction: (prevState: FormState, formData: FormData) => Promise<FormState>;
 };
@@ -149,13 +150,13 @@ export function MonthCalendar({
                   </button>
                 )}
               </div>
-              <div className="flex flex-col gap-0.5">
-                {evenementsJour.slice(0, 3).map((e) => (
+              <div className="flex flex-col gap-0.5 overflow-y-auto max-h-[70px]">
+                {evenementsJour.map((e) => (
                   <Link
                     key={`${e.type}-${e.id}`}
                     href={e.href}
                     className={cn(
-                      "truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight hover:opacity-80",
+                      "truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight hover:opacity-80 shrink-0",
                       e.type === "release" && "bg-chart-4/20 text-chart-4",
                       e.type === "ticket" && "bg-primary/10 text-primary",
                       e.type === "statut" && "bg-chart-2/20 text-chart-2"
@@ -166,11 +167,6 @@ export function MonthCalendar({
                     {e.label}
                   </Link>
                 ))}
-                {evenementsJour.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground px-1">
-                    +{evenementsJour.length - 3} autre{evenementsJour.length - 3 > 1 ? "s" : ""}
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -191,6 +187,7 @@ export function MonthCalendar({
           projets={interactif.projets}
           projetFiltre={interactif.projetFiltre}
           ticketsAssignables={interactif.ticketsAssignables}
+          ticketsSansReleaseParProjet={interactif.ticketsSansReleaseParProjet}
           createReleaseAction={interactif.createReleaseAction}
           assignDateAction={interactif.assignDateAction}
         />

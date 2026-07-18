@@ -15,8 +15,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
+  TICKET_STATUTS,
   TICKET_STATUT_LABELS,
   TICKET_PRIORITE_LABELS,
   ticketStatutBadgeVariant,
@@ -24,10 +32,11 @@ import {
   type TicketStatut,
   type TicketPriorite,
 } from "@/lib/types";
-import { deleteTicket, deleteTicketsBulk } from "./actions";
+import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk } from "./actions";
 
 export type AdminTicketRow = {
   id: string;
+  numero: number;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -42,7 +51,7 @@ function construireExtrait(tickets: AdminTicketRow[]): string {
     .map((t) => {
       const client = t.profiles?.full_name || t.profiles?.email || "—";
       const lignes = [
-        `### ${t.titre}`,
+        `### #${t.numero} — ${t.titre}`,
         `- Projet : ${t.projets?.nom ?? "—"}`,
         `- Client : ${client}`,
         `- Priorité : ${TICKET_PRIORITE_LABELS[t.priorite]} · Statut : ${TICKET_STATUT_LABELS[t.statut]}`,
@@ -131,6 +140,8 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
   }
 
   const ticketsSelectionnes = tickets.filter((t) => selection.has(t.id));
+  const [statutMasse, setStatutMasse] = useState<TicketStatut | "">("");
+  const [applyingStatut, setApplyingStatut] = useState(false);
 
   async function handleExtraire() {
     const texte = construireExtrait(ticketsSelectionnes);
@@ -163,6 +174,19 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
     router.refresh();
   }
 
+  async function handleApplyStatutMasse() {
+    if (!statutMasse) return;
+    setApplyingStatut(true);
+    const ids = [...selection];
+    const { maj, echecs } = await updateTicketsStatutBulk(ids, statutMasse);
+    setApplyingStatut(false);
+    if (maj > 0) toast.success(`${maj} ticket${maj > 1 ? "s" : ""} passé${maj > 1 ? "s" : ""} en "${TICKET_STATUT_LABELS[statutMasse]}".`);
+    if (echecs > 0) toast.error(`${echecs} changement(s) ont échoué.`);
+    setStatutMasse("");
+    setSelection(new Set());
+    router.refresh();
+  }
+
   if (tickets.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6">
@@ -180,6 +204,26 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
           </span>
           <Button size="sm" variant="outline" onClick={handleExtraire}>
             Extraire
+          </Button>
+          <Select value={statutMasse} onValueChange={(v) => setStatutMasse(v as TicketStatut)}>
+            <SelectTrigger size="sm" className="w-[180px]">
+              <SelectValue placeholder="Changer le statut..." />
+            </SelectTrigger>
+            <SelectContent>
+              {TICKET_STATUTS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {TICKET_STATUT_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!statutMasse || applyingStatut}
+            onClick={handleApplyStatutMasse}
+          >
+            {applyingStatut ? "..." : "Appliquer"}
           </Button>
           <ConfirmDeleteButton
             size="text"
@@ -202,6 +246,7 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                 aria-label="Tout sélectionner"
               />
             </TableHead>
+            <TableHead className="w-14">#</TableHead>
             <TableHead>Titre</TableHead>
             <TableHead>Projet</TableHead>
             <TableHead>Client</TableHead>
@@ -227,6 +272,7 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                   aria-label={`Sélectionner ${t.titre}`}
                 />
               </TableCell>
+              <TableCell className="text-muted-foreground tabular-nums">#{t.numero}</TableCell>
               <TableCell>
                 <Link href={`/admin/tickets/${t.id}`} className="font-medium hover:underline underline-offset-2">
                   {t.titre}

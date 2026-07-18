@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Release, TicketStatut } from "@/lib/types";
 
-export type TicketPourRelease = { id: string; statut: TicketStatut; created_at: string };
+export type TicketPourRelease = { id: string; statut: TicketStatut; release_id: string | null };
 
 export type ReleaseAvecProgression = Release & {
   total: number;
@@ -9,34 +9,21 @@ export type ReleaseAvecProgression = Release & {
 };
 
 /**
- * Calcule, pour une liste de releases d'un même projet (triées par date),
- * quels tickets "appartiennent" à chacune : tous ceux créés après la
- * release précédente (exclu) et jusqu'à la date de celle-ci (incluse).
- * Un ticket né d'une réouverture (ticket_origine_id non null) est un
- * NOUVEAU ticket avec sa propre date de création — il tombe naturellement
- * dans la release suivante, jamais dans celle de son ticket d'origine.
+ * Regroupe les tickets par release_id (colonne stockée depuis la migration
+ * 0013). Remplace l'ancien calcul par plage de dates (created_at entre deux
+ * releases) : décision prise en clarification sprint 12, ce calcul
+ * automatique ne fonctionnait pas correctement en pratique. Un ticket
+ * appartient désormais à au plus une release, choisie explicitement.
  */
 export function calculerProgressionReleases(
   releases: Release[],
   tickets: TicketPourRelease[]
 ): ReleaseAvecProgression[] {
-  const triees = [...releases].sort((a, b) => a.date.localeCompare(b.date));
-
-  return triees.map((release, i) => {
-    const precedente = i > 0 ? triees[i - 1] : null;
-    // Fin de journée pour inclure tout ticket créé le jour même de la release.
-    const fin = new Date(`${release.date}T23:59:59.999`);
-    const debut = precedente ? new Date(`${precedente.date}T23:59:59.999`) : null;
-
-    const ticketsDeLaRelease = tickets.filter((t) => {
-      const cree = new Date(t.created_at);
-      return cree <= fin && (debut === null || cree > debut);
-    });
-
+  return releases.map((release) => {
+    const ticketsDeLaRelease = tickets.filter((t) => t.release_id === release.id);
     const resolus = ticketsDeLaRelease.filter(
       (t) => t.statut === "resolu" || t.statut === "ferme"
     ).length;
-
     return { ...release, total: ticketsDeLaRelease.length, resolus };
   });
 }
@@ -78,4 +65,32 @@ export async function getToutesLesReleases(
     description: r.description,
     projet_nom: (r.projets as unknown as { nom: string } | null)?.nom ?? "—",
   }));
+}
+
+export type TicketSansRelease = { id: string; titre: string };
+
+/**
+ * Tickets sans release, groupés par projet — pour le sélecteur multiple du
+ * formulaire de création de release (sprint 12). Tous projets confondus
+ * (le formulaire filtre côté client selon le projet choisi dans son propre
+ * select), comme clientsParProjet dans queries/tickets.ts.
+ */
+export async function getTicketsSansReleaseParProjet(
+  supabase: SupabaseClient
+): Promise<Record<string, TicketSansRelease[]>> {
+  const { data, error } = await supabase
+    .from("tickets")
+    .select("id, titre, projet_id")
+    .is("release_id", null)
+    .order("titre");
+
+  if (error || !data) return {};
+
+  const parProjet: Record<string, TicketSansRelease[]> = {};
+  for (const t of data) {
+    const liste = parProjet[t.projet_id] ?? [];
+    liste.push({ id: t.id, titre: t.titre });
+    parProjet[t.projet_id] = liste;
+  }
+  return parProjet;
 }

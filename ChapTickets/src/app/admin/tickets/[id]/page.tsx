@@ -23,6 +23,8 @@ import {
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
+import { RefClientDisplay } from "@/components/ref-client-display";
+import { TicketPreviewCard } from "@/components/ticket-preview-card";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
@@ -52,7 +54,7 @@ export default async function AdminTicketDetailPage({
     supabase
       .from("tickets")
       .select(
-        "id, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
       )
       .eq("id", id)
       .single(),
@@ -141,28 +143,31 @@ export default async function AdminTicketDetailPage({
           simplement sous le contenu principal (grid-cols-1). */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-6 min-w-0">
-          <div>
-            <h1 className="text-lg font-semibold">{ticket.titre}</h1>
-            <p className="text-sm text-muted-foreground">
-              {projet?.nom ?? "—"} · {client?.full_name || client?.email || "—"}
-            </p>
-          </div>
+          <RefClientDisplay ticketId={ticket.id} refClient={ticket.ref_client} />
 
           {ticketOrigine && (
             <Link
               href={`/admin/tickets/${ticketOrigine.id}`}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit -mt-4"
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit"
             >
               Fait suite à « {ticketOrigine.titre} » →
             </Link>
           )}
 
+          <TicketPreviewCard
+            titre={ticket.titre}
+            description={ticket.description ?? ""}
+            priorite={priorite}
+            projetNom={projet?.nom ?? null}
+            clientNom={client?.full_name || client?.email || null}
+            dateEcheance={ticket.date_prevue}
+            tags={tagsActuels}
+            statut={statut}
+            numero={ticket.numero}
+          />
+
           <Card>
             <CardContent className="flex flex-col gap-6 pt-6">
-              {ticket.description && (
-                <p className="text-sm whitespace-pre-wrap max-w-prose">{ticket.description}</p>
-              )}
-
               <ReopenRequestsPanel
                 ticketId={ticket.id}
                 demandes={(demandes ?? []) as unknown as DemandeReouverture[]}

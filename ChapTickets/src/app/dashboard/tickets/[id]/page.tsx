@@ -23,6 +23,8 @@ import { ReopenRequestButton } from "./reopen-request-button";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
+import { RefClientDisplay } from "@/components/ref-client-display";
+import { TicketPreviewCard } from "@/components/ticket-preview-card";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
@@ -52,7 +54,7 @@ export default async function ClientTicketDetailPage({
     supabase
       .from("tickets")
       .select(
-        "id, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom)"
+        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom)"
       )
       .eq("id", id)
       .single(),
@@ -135,26 +137,31 @@ export default async function ClientTicketDetailPage({
           toutes les metadata au-dessus d'une colonne étroite. */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-6 min-w-0">
-          <div>
-            <h1 className="text-lg font-semibold">{ticket.titre}</h1>
-            <p className="text-sm text-muted-foreground">{projet?.nom ?? "—"}</p>
-          </div>
+          <RefClientDisplay ticketId={ticket.id} refClient={ticket.ref_client} />
 
           {ticketOrigine && (
             <Link
               href={`/dashboard/tickets/${ticketOrigine.id}`}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit -mt-4"
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit"
             >
               Fait suite à « {ticketOrigine.titre} » →
             </Link>
           )}
 
+          <TicketPreviewCard
+            titre={ticket.titre}
+            description={ticket.description ?? ""}
+            priorite={priorite}
+            projetNom={projet?.nom ?? null}
+            clientNom={null}
+            dateEcheance={ticket.date_prevue}
+            tags={tagsActuels}
+            statut={statut}
+            numero={ticket.numero}
+          />
+
           <Card>
             <CardContent className="flex flex-col gap-6 pt-6">
-              {ticket.description && (
-                <p className="text-sm whitespace-pre-wrap max-w-prose">{ticket.description}</p>
-              )}
-
               {dejaRemplace && derniereDemande?.nouveau_ticket_id && (
                 <Link
                   href={`/dashboard/tickets/${derniereDemande.nouveau_ticket_id}`}

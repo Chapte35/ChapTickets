@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ export function DayActionsDialog({
   projets,
   projetFiltre,
   ticketsAssignables,
+  ticketsSansReleaseParProjet,
   createReleaseAction,
   assignDateAction,
 }: {
@@ -44,6 +46,7 @@ export function DayActionsDialog({
   projets: ProjetOption[];
   projetFiltre?: string;
   ticketsAssignables: TicketAssignable[];
+  ticketsSansReleaseParProjet: Record<string, { id: string; titre: string }[]>;
   createReleaseAction: (prevState: FormState, formData: FormData) => Promise<FormState>;
   assignDateAction: (prevState: FormState, formData: FormData) => Promise<FormState>;
 }) {
@@ -56,6 +59,27 @@ export function DayActionsDialog({
     { error: null } as FormState
   );
   const [ticketId, setTicketId] = useState("");
+  const [releaseProjetId, setReleaseProjetId] = useState(projetFiltre ?? "");
+  const [ticketsChoisis, setTicketsChoisis] = useState<Set<string>>(new Set());
+
+  const ticketsSansReleaseDuProjet = useMemo(
+    () => (releaseProjetId ? ticketsSansReleaseParProjet[releaseProjetId] ?? [] : []),
+    [releaseProjetId, ticketsSansReleaseParProjet]
+  );
+
+  function handleReleaseProjetChange(value: string) {
+    setReleaseProjetId(value);
+    setTicketsChoisis(new Set()); // les tickets dispo dépendent du projet, on réinitialise
+  }
+
+  function toggleTicketChoisi(id: string, checked: boolean) {
+    setTicketsChoisis((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   // Ferme le dialog tout seul quand une des deux actions vient de réussir —
   // sinon rien n'indique visuellement que ça a marché à part le formulaire
@@ -98,7 +122,11 @@ export function DayActionsDialog({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="release-projet">Projet</Label>
-                <Select name="projet_id" defaultValue={projetFiltre}>
+                <Select
+                  name="projet_id"
+                  value={releaseProjetId}
+                  onValueChange={handleReleaseProjetChange}
+                >
                   <SelectTrigger id="release-projet" className="w-full h-8 text-sm">
                     <SelectValue placeholder="Choisir un projet" />
                   </SelectTrigger>
@@ -110,6 +138,35 @@ export function DayActionsDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Tickets à attribuer (sans release)</Label>
+                {ticketsChoisis.size > 0 &&
+                  [...ticketsChoisis].map((id) => (
+                    <input key={id} type="hidden" name="ticket_ids" value={id} />
+                  ))}
+                {!releaseProjetId ? (
+                  <p className="text-xs text-muted-foreground">Choisis d&apos;abord un projet.</p>
+                ) : ticketsSansReleaseDuProjet.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Aucun ticket sans release sur ce projet.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto rounded-md border p-2">
+                    {ticketsSansReleaseDuProjet.map((t) => (
+                      <label
+                        key={t.id}
+                        className="flex items-center gap-2 text-xs py-0.5 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={ticketsChoisis.has(t.id)}
+                          onCheckedChange={(v) => toggleTicketChoisi(t.id, v === true)}
+                        />
+                        {t.titre}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="release-description">Description (optionnel)</Label>

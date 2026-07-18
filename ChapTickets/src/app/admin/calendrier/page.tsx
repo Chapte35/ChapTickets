@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { MonthCalendar, type CalendrierEvenement } from "@/components/calendar/month-calendar";
 import { getTousLesProjets } from "@/lib/queries/tickets";
+import { getTicketsSansReleaseParProjet } from "@/lib/queries/releases";
 import { TICKET_STATUT_LABELS, type TicketStatut } from "@/lib/types";
 import { ProjetFilter } from "@/components/calendar/projet-filter";
 import { createRelease } from "./actions";
@@ -68,12 +69,14 @@ export default async function CalendrierAdminPage({
     projets,
     { data: ticketsAssignablesRows },
     { data: historique },
+    ticketsSansReleaseParProjet,
   ] = await Promise.all([
     ticketsQuery,
     releasesQuery,
     getTousLesProjets(supabase),
     ticketsAssignablesQuery,
     historiqueQuery,
+    getTicketsSansReleaseParProjet(supabase),
   ]);
 
   const evenementsStatut = (historique ?? [])
@@ -143,6 +146,7 @@ export default async function CalendrierAdminPage({
               projets,
               projetFiltre: projetId,
               ticketsAssignables,
+              ticketsSansReleaseParProjet,
               createReleaseAction: createRelease,
               assignDateAction: updateDateEcheance,
             }}

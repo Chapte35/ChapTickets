@@ -11,6 +11,7 @@ import {
 
 export type TicketRow = {
   id: string;
+  numero: number;
   titre: string;
   statut: TicketStatut;
   priorite: TicketPriorite;
@@ -45,7 +46,9 @@ export function TicketList({
             className="flex items-center justify-between gap-4 py-3 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors"
           >
             <div className="flex flex-col gap-1 min-w-0">
-              <span className="font-medium truncate">{t.titre}</span>
+              <span className="font-medium truncate">
+                <span className="text-muted-foreground font-normal">#{t.numero}</span> {t.titre}
+              </span>
               <span className="text-xs text-muted-foreground truncate">
                 {t.projets?.nom ?? "—"}
                 {showClient && t.profiles
