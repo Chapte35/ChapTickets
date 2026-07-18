@@ -17,6 +17,7 @@ import {
   TICKET_PRIORITE_LABELS,
   type TicketPriorite,
   type Tag,
+  tagsVisiblesPourProjet,
 } from "@/lib/types";
 import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
 import { TagPicker } from "@/components/tag-picker";
@@ -69,6 +70,7 @@ export function CreateTicketAdminForm({
   function handleProjetChange(value: string) {
     setProjetId(value);
     setClientId(""); // le client dépend du projet, on réinitialise
+    setTagsSelectionnes([]); // idem pour les tags (certains sont exclusifs à un projet)
   }
 
   return (
@@ -177,7 +179,11 @@ export function CreateTicketAdminForm({
 
         <div className="flex flex-col gap-2">
           <Label>Tags</Label>
-          <TagPicker tags={tags} onSelectionChange={setTagsSelectionnes} />
+          <TagPicker
+            key={projetId}
+            tags={tagsVisiblesPourProjet(tags, projetId || null)}
+            onSelectionChange={setTagsSelectionnes}
+          />
         </div>
 
         {state.error && (

@@ -11,6 +11,7 @@ import {
   type TicketPriorite,
   type TicketStatut,
   type Tag,
+  tagsVisiblesPourProjet,
 } from "@/lib/types";
 import { getAllTags } from "@/lib/queries/tags";
 import { StatusUpdateForm } from "./status-update-form";
@@ -54,7 +55,7 @@ export default async function AdminTicketDetailPage({
     supabase
       .from("tickets")
       .select(
-        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
       )
       .eq("id", id)
       .single(),
@@ -70,7 +71,7 @@ export default async function AdminTicketDetailPage({
       .select("id, contenu, created_at, auteur_id, profiles!messages_auteur_id_fkey(role, full_name, email)")
       .eq("ticket_id", id)
       .order("created_at", { ascending: true }),
-    supabase.from("ticket_tags").select("tags(id, nom, couleur)").eq("ticket_id", id),
+    supabase.from("ticket_tags").select("tags(id, nom, couleur, projet_id)").eq("ticket_id", id),
     getAllTags(supabase),
     supabase
       .from("ticket_checklist_items")
@@ -218,7 +219,7 @@ export default async function AdminTicketDetailPage({
                 <TicketTagsEditor
                   ticketId={ticket.id}
                   tagsActuels={tagsActuels}
-                  tousLesTags={tousLesTags}
+                  tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
                 />
               </div>
             </CardContent>

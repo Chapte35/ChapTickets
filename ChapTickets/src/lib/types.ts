@@ -212,7 +212,19 @@ export type Tag = {
   id: string;
   nom: string;
   couleur: TagColor;
+  /** Null = générique (tous projets). Renseigné = exclusif à ce projet. */
+  projet_id: string | null;
 };
+
+/**
+ * Un tag est utilisable sur un ticket si générique (projet_id null) ou
+ * exclusif au projet même de ce ticket — jamais celui d'un autre projet.
+ * Centralisé ici pour que le picker de création et l'éditeur de tags sur
+ * une fiche existante appliquent exactement la même règle (sprint 13).
+ */
+export function tagsVisiblesPourProjet(tags: Tag[], projetId: string | null): Tag[] {
+  return tags.filter((t) => t.projet_id === null || t.projet_id === projetId);
+}
 
 /**
  * Liste fermée d'emojis proposés pour l'avatar de profil (pas d'upload
@@ -230,6 +242,22 @@ export const AVATAR_EMOJIS = [
 ] as const;
 
 export type AvatarEmoji = (typeof AVATAR_EMOJIS)[number];
+
+export const TAG_PORTEE_GENERIQUE = "__generique__";
+
+/**
+ * Mapping statut -> couleur chart, utilisé par le donut du dashboard
+ * (TicketStatusDonut) ET les pastilles d'événement "statut" du calendrier
+ * (sprint 13, ticket "Code Couleur Calendrier") — une seule source de
+ * vérité pour que les deux se lisent comme le même code couleur.
+ */
+export const TICKET_STATUT_CHART_COLOR: Record<TicketStatut, string> = {
+  ouvert: "var(--chart-1)",
+  en_cours: "var(--chart-4)",
+  en_attente_client: "var(--chart-5)",
+  resolu: "var(--chart-2)",
+  ferme: "var(--chart-3)",
+};
 
 export type Release = {
   id: string;

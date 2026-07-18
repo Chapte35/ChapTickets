@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TICKET_PRIORITES, type Tag } from "@/lib/types";
+import { TICKET_PRIORITES, tagsVisiblesPourProjet, type Tag } from "@/lib/types";
 import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
 
 function construirePrompt(params: {
@@ -96,7 +96,11 @@ export function PrepromptGenerator({
 
   async function copierPrompt() {
     if (!projetNom || !clientEmail) return;
-    const prompt = construirePrompt({ projetNom, clientEmail, tags });
+    const prompt = construirePrompt({
+      projetNom,
+      clientEmail,
+      tags: tagsVisiblesPourProjet(tags, projetId),
+    });
     await navigator.clipboard.writeText(prompt);
     toast.success("Prompt copié — colle-le dans ta conversation IA.");
   }

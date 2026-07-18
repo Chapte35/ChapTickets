@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/guards";
-import { TAG_COLORS } from "@/lib/types";
+import { TAG_COLORS, TAG_PORTEE_GENERIQUE } from "@/lib/types";
 
 export type FormState = { error: string | null };
 
@@ -15,6 +15,7 @@ export async function createTag(
 
   const nom = formData.get("nom");
   const couleur = formData.get("couleur");
+  const projetIdBrut = formData.get("projet_id");
 
   if (typeof nom !== "string" || !nom.trim()) {
     return { error: "Nom requis." };
@@ -23,7 +24,14 @@ export async function createTag(
     return { error: "Couleur invalide." };
   }
 
-  const { error } = await supabase.from("tags").insert({ nom: nom.trim(), couleur });
+  const projetId =
+    typeof projetIdBrut === "string" && projetIdBrut && projetIdBrut !== TAG_PORTEE_GENERIQUE
+      ? projetIdBrut
+      : null;
+
+  const { error } = await supabase
+    .from("tags")
+    .insert({ nom: nom.trim(), couleur, projet_id: projetId });
 
   if (error) {
     // Cas fréquent : nom déjà pris (contrainte unique).

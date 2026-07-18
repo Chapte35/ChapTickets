@@ -17,6 +17,7 @@ import {
   TICKET_PRIORITE_LABELS,
   type TicketPriorite,
   type Tag,
+  tagsVisiblesPourProjet,
 } from "@/lib/types";
 import type { ProjetOption } from "@/lib/queries/tickets";
 import { TagPicker } from "@/components/tag-picker";
@@ -77,7 +78,15 @@ export function CreateTicketClientForm({
 
         <div className="flex flex-col gap-2">
           <Label>Projet</Label>
-          <Select name="projet_id" value={projetId} onValueChange={setProjetId} required>
+          <Select
+            name="projet_id"
+            value={projetId}
+            onValueChange={(value) => {
+              setProjetId(value);
+              setTagsSelectionnes([]); // certains tags sont exclusifs à un projet
+            }}
+            required
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Choisir un projet" />
             </SelectTrigger>
@@ -113,7 +122,11 @@ export function CreateTicketClientForm({
 
         <div className="flex flex-col gap-2">
           <Label>Tags</Label>
-          <TagPicker tags={tags} onSelectionChange={setTagsSelectionnes} />
+          <TagPicker
+            key={projetId}
+            tags={tagsVisiblesPourProjet(tags, projetId || null)}
+            onSelectionChange={setTagsSelectionnes}
+          />
         </div>
 
         {state.error && (

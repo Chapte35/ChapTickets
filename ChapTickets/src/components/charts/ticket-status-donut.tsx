@@ -7,7 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { TICKET_STATUTS, TICKET_STATUT_LABELS, type TicketStatut } from "@/lib/types";
+import { TICKET_STATUTS, TICKET_STATUT_LABELS, TICKET_STATUT_CHART_COLOR, type TicketStatut } from "@/lib/types";
 
 // Structure identique à l'exemple officiel : une clé "globale" (sans
 // couleur, juste un label pour le centre du donut), puis une clé par
@@ -18,23 +18,23 @@ const chartConfig = {
   },
   ouvert: {
     label: TICKET_STATUT_LABELS.ouvert,
-    color: "var(--chart-1)",
+    color: TICKET_STATUT_CHART_COLOR.ouvert,
   },
   en_cours: {
     label: TICKET_STATUT_LABELS.en_cours,
-    color: "var(--chart-4)",
+    color: TICKET_STATUT_CHART_COLOR.en_cours,
   },
   en_attente_client: {
     label: TICKET_STATUT_LABELS.en_attente_client,
-    color: "var(--chart-5)",
+    color: TICKET_STATUT_CHART_COLOR.en_attente_client,
   },
   resolu: {
     label: TICKET_STATUT_LABELS.resolu,
-    color: "var(--chart-2)",
+    color: TICKET_STATUT_CHART_COLOR.resolu,
   },
   ferme: {
     label: TICKET_STATUT_LABELS.ferme,
-    color: "var(--chart-3)",
+    color: TICKET_STATUT_CHART_COLOR.ferme,
   },
 } satisfies ChartConfig;
 

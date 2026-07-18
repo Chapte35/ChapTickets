@@ -74,6 +74,7 @@ export default async function CalendrierClientPage({
         id: h.id as string,
         label: `${ticket.titre} : ${ancien} → ${nouveau}`,
         href: `/dashboard/tickets/${ticket.id}`,
+        statut: h.nouveau_statut as TicketStatut,
       };
     })
     .filter((e) => e !== null) as CalendrierEvenement[];
@@ -97,14 +98,14 @@ export default async function CalendrierClientPage({
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
         <h1 className="text-lg font-semibold">Calendrier</h1>
         {projets.length > 1 && <ProjetFilter projets={projets} />}
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardContent className="pt-6 flex-1 flex flex-col min-h-0">
           <MonthCalendar
             year={year}
             month={month}

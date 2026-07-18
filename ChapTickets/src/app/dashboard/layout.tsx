@@ -44,7 +44,7 @@ export default async function DashboardLayout({
         logoutAction={logout}
         basePath="/dashboard"
       />
-      <main className="flex-1 p-6 overflow-x-auto">{children}</main>
+      <main className="flex-1 h-dvh overflow-y-auto overflow-x-auto p-6">{children}</main>
     </div>
   );
 }

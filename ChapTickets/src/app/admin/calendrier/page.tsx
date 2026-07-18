@@ -94,6 +94,7 @@ export default async function CalendrierAdminPage({
         id: h.id as string,
         label: `${ticket.titre} : ${ancien} → ${nouveau}`,
         href: `/admin/tickets/${ticket.id}`,
+        statut: h.nouveau_statut as TicketStatut,
       };
     })
     .filter((e) => e !== null) as CalendrierEvenement[];
@@ -123,8 +124,8 @@ export default async function CalendrierAdminPage({
   }));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
         <div>
           <h1 className="text-lg font-semibold">Calendrier</h1>
           <p className="text-sm text-muted-foreground">
@@ -134,8 +135,8 @@ export default async function CalendrierAdminPage({
         <ProjetFilter projets={projets} />
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardContent className="pt-6 flex-1 flex flex-col min-h-0">
           <MonthCalendar
             year={year}
             month={month}

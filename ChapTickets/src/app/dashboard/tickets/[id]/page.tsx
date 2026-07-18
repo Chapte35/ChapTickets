@@ -17,6 +17,7 @@ import {
   type TicketStatut,
   type TicketPriorite,
   type Tag,
+  tagsVisiblesPourProjet,
 } from "@/lib/types";
 import { getAllTags } from "@/lib/queries/tags";
 import { ReopenRequestButton } from "./reopen-request-button";
@@ -54,7 +55,7 @@ export default async function ClientTicketDetailPage({
     supabase
       .from("tickets")
       .select(
-        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom)"
+        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, projets(nom)"
       )
       .eq("id", id)
       .single(),
@@ -69,7 +70,7 @@ export default async function ClientTicketDetailPage({
       .select("id, contenu, created_at, auteur_id, profiles!messages_auteur_id_fkey(role, full_name, email)")
       .eq("ticket_id", id)
       .order("created_at", { ascending: true }),
-    supabase.from("ticket_tags").select("tags(id, nom, couleur)").eq("ticket_id", id),
+    supabase.from("ticket_tags").select("tags(id, nom, couleur, projet_id)").eq("ticket_id", id),
     getAllTags(supabase),
     supabase
       .from("ticket_checklist_items")
@@ -215,7 +216,7 @@ export default async function ClientTicketDetailPage({
                 <TicketTagsEditor
                   ticketId={ticket.id}
                   tagsActuels={tagsActuels}
-                  tousLesTags={tousLesTags}
+                  tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
                 />
               </div>
 

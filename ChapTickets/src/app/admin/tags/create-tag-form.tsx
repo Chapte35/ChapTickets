@@ -4,14 +4,22 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { TAG_COLORS, TAG_COLOR_CLASSES } from "@/lib/types";
+import { TAG_COLORS, TAG_COLOR_CLASSES, TAG_PORTEE_GENERIQUE } from "@/lib/types";
+import type { ProjetOption } from "@/lib/queries/tickets";
 import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { createTag, type FormState } from "./actions";
 
 const initialState: FormState = { error: null };
 
-export function CreateTagForm() {
+export function CreateTagForm({ projets }: { projets: ProjetOption[] }) {
   const [state, formAction, isPending] = useActionState(createTag, initialState);
 
   useToastOnSuccess(isPending, state.error, "Tag créé.");
@@ -21,6 +29,22 @@ export function CreateTagForm() {
       <div className="flex flex-col gap-2">
         <Label htmlFor="nom">Nom</Label>
         <Input id="nom" name="nom" required />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="projet_id">Portée</Label>
+        <Select name="projet_id" defaultValue={TAG_PORTEE_GENERIQUE}>
+          <SelectTrigger id="projet_id" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TAG_PORTEE_GENERIQUE}>Générique (tous les projets)</SelectItem>
+            {projets.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                Exclusif à {p.nom}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="flex flex-col gap-2">
         <Label>Couleur</Label>
