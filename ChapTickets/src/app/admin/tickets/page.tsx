@@ -4,6 +4,7 @@ import { getTousLesProjets } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
 import { AdminTicketsTable, type AdminTicketRow } from "./admin-tickets-table";
 import { Button } from "@/components/ui/button";
+import { TICKET_TRIS, type TicketTri } from "@/lib/types";
 
 export default async function AdminTicketsPage({
   searchParams,
@@ -13,12 +14,23 @@ export default async function AdminTicketsPage({
   const params = await searchParams;
   const supabase = await createClient();
 
+  const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
+    ? (params.tri as TicketTri)
+    : "recent";
+
   let query = supabase
     .from("tickets")
     .select(
-      "id, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
-    )
-    .order("created_at", { ascending: false });
+      "id, titre, description, statut, priorite, created_at, date_prevue, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+    );
+
+  // "échéance" met les tickets sans date_prevue à la fin plutôt qu'au
+  // hasard : nullsFirst: false, sinon Postgres les remonte en tête par
+  // défaut ce qui n'a aucun sens pour un tri "prochaine échéance".
+  query =
+    tri === "echeance"
+      ? query.order("date_prevue", { ascending: true, nullsFirst: false })
+      : query.order("created_at", { ascending: tri === "ancien" });
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);

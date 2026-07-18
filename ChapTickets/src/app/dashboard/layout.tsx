@@ -9,6 +9,7 @@ const NAV_ITEMS: SidebarItem[] = [
   { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
   { href: "/dashboard/calendrier", label: "Calendrier", icon: "calendrier" },
   { href: "/dashboard/messagerie", label: "Messagerie", icon: "messagerie" },
+  { href: "/dashboard/profil", label: "Profil", icon: "profil" },
 ];
 
 export default async function DashboardLayout({

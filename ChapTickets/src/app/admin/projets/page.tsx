@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TicketKanbanReadonly, type TicketKanbanItem } from "@/components/ticket-kanban-readonly";
+import { TicketKanbanBoard } from "@/components/ticket-kanban-board";
+import type { TicketKanbanItem } from "@/components/ticket-kanban-readonly";
 import { PROJET_STATUT_LABELS, type ProjetStatut, type TicketStatut, type TicketPriorite } from "@/lib/types";
 
 export default async function ProjetsPage() {
@@ -79,7 +80,7 @@ export default async function ProjetsPage() {
                 {ticketsDuProjet.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-2">Aucun ticket sur ce projet.</p>
                 ) : (
-                  <TicketKanbanReadonly tickets={ticketsDuProjet} basePath="/admin/tickets" />
+                  <TicketKanbanBoard initialTickets={ticketsDuProjet} basePath="/admin/tickets" />
                 )}
               </CardContent>
             </Card>

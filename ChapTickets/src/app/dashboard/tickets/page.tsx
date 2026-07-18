@@ -4,6 +4,7 @@ import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
 import { TicketList, type TicketRow } from "@/components/ticket-list";
 import { Button } from "@/components/ui/button";
+import { TICKET_TRIS, type TicketTri } from "@/lib/types";
 
 export default async function ClientTicketsPage({
   searchParams,
@@ -18,10 +19,18 @@ export default async function ClientTicketsPage({
 
   if (!user) return null; // le layout redirige déjà, filet de sécurité
 
+  const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
+    ? (params.tri as TicketTri)
+    : "recent";
+
   let query = supabase
     .from("tickets")
-    .select("id, titre, statut, priorite, created_at, projets(nom)")
-    .order("created_at", { ascending: false });
+    .select("id, titre, statut, priorite, created_at, date_prevue, projets(nom)");
+
+  query =
+    tri === "echeance"
+      ? query.order("date_prevue", { ascending: true, nullsFirst: false })
+      : query.order("created_at", { ascending: tri === "ancien" });
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);

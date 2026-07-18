@@ -87,23 +87,24 @@ export async function createTicketAdmin(
   redirect(`/admin/tickets/${ticket.id}`);
 }
 
-export async function updateTicketStatus(
-  _prevState: FormState,
-  formData: FormData
+/**
+ * Logique réelle du changement de statut, appelable directement (drag &
+ * drop du kanban tickets) sans passer par un FormData — même dualité que
+ * updateProjetStatut/updateProjetStatutForm dans admin/projets/actions.ts.
+ * updateTicketStatus (form, ci-dessous) n'est plus qu'un adaptateur autour
+ * de celle-ci.
+ */
+export async function updateTicketStatutInterne(
+  ticketId: string,
+  statut: string
 ): Promise<FormState> {
   const { supabase, isAdmin, userId } = await requireAdmin();
   if (!isAdmin) return { error: "Action réservée à l'admin." };
 
-  const ticketId = formData.get("ticket_id");
-  const statut = formData.get("statut");
-
-  if (typeof ticketId !== "string" || !ticketId) {
+  if (!ticketId) {
     return { error: "Ticket invalide." };
   }
-  if (
-    typeof statut !== "string" ||
-    !TICKET_STATUTS.includes(statut as (typeof TICKET_STATUTS)[number])
-  ) {
+  if (!TICKET_STATUTS.includes(statut as (typeof TICKET_STATUTS)[number])) {
     return { error: "Statut invalide." };
   }
 
@@ -136,13 +137,70 @@ export async function updateTicketStatus(
     if (historiqueError) {
       // Le changement de statut lui-même a réussi — on ne fait pas échouer
       // toute l'action pour un souci sur une table annexe d'historique.
-      console.error("[updateTicketStatus] échec log historique:", historiqueError.message);
+      console.error("[updateTicketStatutInterne] échec log historique:", historiqueError.message);
     }
   }
 
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");
+  revalidatePath("/admin/projets");
   revalidatePath("/admin/calendrier");
+  return { error: null };
+}
+
+export async function updateTicketStatus(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const ticketId = formData.get("ticket_id");
+  const statut = formData.get("statut");
+
+  if (typeof ticketId !== "string" || !ticketId) {
+    return { error: "Ticket invalide." };
+  }
+  if (typeof statut !== "string") {
+    return { error: "Statut invalide." };
+  }
+
+  return updateTicketStatutInterne(ticketId, statut);
+}
+
+/**
+ * Même pattern que updateTicketStatus, en plus simple : la priorité n'a
+ * pas de table d'historique dédiée (contrairement au statut, qui alimente
+ * le calendrier via ticket_statut_historique) — rien à logger ici.
+ */
+export async function updateTicketPriorite(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const priorite = formData.get("priorite");
+
+  if (typeof ticketId !== "string" || !ticketId) {
+    return { error: "Ticket invalide." };
+  }
+  if (
+    typeof priorite !== "string" ||
+    !TICKET_PRIORITES.includes(priorite as (typeof TICKET_PRIORITES)[number])
+  ) {
+    return { error: "Priorité invalide." };
+  }
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ priorite, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) {
+    return { error: `Erreur de mise à jour : ${error.message}` };
+  }
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/tickets");
   return { error: null };
 }
 

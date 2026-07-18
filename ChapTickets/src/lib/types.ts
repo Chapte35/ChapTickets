@@ -62,6 +62,22 @@ export const TICKET_PRIORITE_LABELS: Record<TicketPriorite, string> = {
   urgente: "Urgente",
 };
 
+/**
+ * Options de tri des listes de tickets (admin + client). Pas une contrainte
+ * DB (contrairement aux autres consts de ce fichier) — juste un contrat
+ * partagé entre TicketFiltersBar (construit le param `tri`) et les pages
+ * liste (l'appliquent à la query Supabase).
+ */
+export type TicketTri = "recent" | "ancien" | "echeance";
+
+export const TICKET_TRIS: readonly TicketTri[] = ["recent", "ancien", "echeance"] as const;
+
+export const TICKET_TRI_LABELS: Record<TicketTri, string> = {
+  recent: "Plus récents",
+  ancien: "Plus anciens",
+  echeance: "Échéance la plus proche",
+};
+
 // Un client ne peut demander une réouverture que si le ticket est dans un
 // de ces statuts (cf. policy `client_create_demande_reouverture`, à garder
 // synchronisée avec supabase/migrations/0002_reopen_requests.sql).
@@ -197,6 +213,23 @@ export type Tag = {
   nom: string;
   couleur: TagColor;
 };
+
+/**
+ * Liste fermée d'emojis proposés pour l'avatar de profil (pas d'upload
+ * d'image, cf. clarification sprint 10). Fermée volontairement : on évite
+ * un champ texte libre pour un truc purement décoratif, et ça donne un
+ * picker simple (grille de boutons) plutôt qu'un sélecteur d'emoji complet
+ * à intégrer. La contrainte SQL sur avatar_emoji (longueur) est un
+ * garde-fou, pas une validation de liste — celle-ci vit ici et côté
+ * Server Action (cf. src/lib/actions/profil.ts).
+ */
+export const AVATAR_EMOJIS = [
+  "😀", "😎", "🤓", "🥳", "🤖", "👾", "🐱", "🐶",
+  "🦊", "🐼", "🦁", "🐸", "🐧", "🦄", "🐙", "🌟",
+  "🔥", "⚡", "🎯", "🚀",
+] as const;
+
+export type AvatarEmoji = (typeof AVATAR_EMOJIS)[number];
 
 export type Release = {
   id: string;

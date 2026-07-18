@@ -14,6 +14,7 @@ import { ProjetEditForm } from "./projet-edit-form";
 import { ProjetStatutForm } from "./projet-statut-form";
 import { ClientsRattachesPanel } from "./clients-rattaches-panel";
 import { DeleteProjetButton } from "./delete-projet-button";
+import { BackButton } from "@/components/back-button";
 
 export default async function ProjetDetailPage({
   params,
@@ -50,6 +51,7 @@ export default async function ProjetDetailPage({
 
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
+      <BackButton />
       <Button asChild variant="outline" size="sm" className="self-start">
         <Link href={`/admin/projets/${id}/overview`}>Voir l&apos;overview →</Link>
       </Button>

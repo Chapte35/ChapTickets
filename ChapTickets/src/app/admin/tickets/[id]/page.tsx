@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,14 +8,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  TICKET_PRIORITE_LABELS,
-  ticketPrioriteBadgeVariant,
   type TicketPriorite,
   type TicketStatut,
   type Tag,
 } from "@/lib/types";
 import { getAllTags } from "@/lib/queries/tags";
 import { StatusUpdateForm } from "./status-update-form";
+import { PriorityUpdateForm } from "./priority-update-form";
 import { DateEcheanceForm } from "./date-echeance-form";
 import {
   ReopenRequestsPanel,
@@ -24,6 +22,7 @@ import {
 } from "./reopen-requests-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
+import { BackButton } from "@/components/back-button";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
@@ -133,6 +132,7 @@ export default async function AdminTicketDetailPage({
   return (
     <div className="flex flex-col gap-4">
       <MarkTicketRead ticketId={ticket.id} />
+      <BackButton />
 
       {/* Layout à 2 colonnes (façon Linear/GitHub Issues) : le contenu
           narratif (description, checklist, PJ, messages) prend toute la
@@ -195,9 +195,7 @@ export default async function AdminTicketDetailPage({
             <CardContent className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Priorité</span>
-                <Badge variant={ticketPrioriteBadgeVariant(priorite)} className="w-fit">
-                  {TICKET_PRIORITE_LABELS[priorite]}
-                </Badge>
+                <PriorityUpdateForm ticketId={ticket.id} currentPriorite={priorite} />
               </div>
 
               <div className="flex flex-col gap-1.5">

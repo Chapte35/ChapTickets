@@ -15,6 +15,7 @@ import { TicketKanbanReadonly } from "@/components/ticket-kanban-readonly";
 import { ReleaseProgressList } from "@/components/release-progress-list";
 import { getProjetOverviewData } from "@/lib/queries/overview";
 import { PROJET_STATUT_LABELS, type ProjetStatut } from "@/lib/types";
+import { BackButton } from "@/components/back-button";
 
 export default async function ProjetOverviewClientPage({
   params,
@@ -43,6 +44,7 @@ export default async function ProjetOverviewClientPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <BackButton />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">{projet.nom}</h1>

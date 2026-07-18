@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Calendar,
   Search,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ const ICONS = {
   calendrier: Calendar,
   clients: Users,
   home: Home,
+  profil: UserRound,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIconName = keyof typeof ICONS;

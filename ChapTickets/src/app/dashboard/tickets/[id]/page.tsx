@@ -22,6 +22,7 @@ import { getAllTags } from "@/lib/queries/tags";
 import { ReopenRequestButton } from "./reopen-request-button";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
+import { BackButton } from "@/components/back-button";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
@@ -127,6 +128,7 @@ export default async function ClientTicketDetailPage({
   return (
     <div className="flex flex-col gap-4">
       <MarkTicketRead ticketId={ticket.id} />
+      <BackButton />
 
       {/* Même layout 2 colonnes que côté admin (cf. admin/tickets/[id]) :
           cohérence des deux fiches, et ça évite pareillement d'empiler

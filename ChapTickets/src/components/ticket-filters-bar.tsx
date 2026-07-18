@@ -14,6 +14,8 @@ import {
   TICKET_PRIORITES,
   TICKET_STATUT_LABELS,
   TICKET_PRIORITE_LABELS,
+  TICKET_TRIS,
+  TICKET_TRI_LABELS,
 } from "@/lib/types";
 import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
 
@@ -117,6 +119,23 @@ export function TicketFiltersBar({
           </SelectContent>
         </Select>
       )}
+
+      <Select
+        value={searchParams.get("tri") ?? ALL}
+        onValueChange={(v) => setParam("tri", v)}
+      >
+        <SelectTrigger size="sm" className="w-[200px]">
+          <SelectValue placeholder="Trier par" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>{TICKET_TRI_LABELS.recent} (défaut)</SelectItem>
+          {TICKET_TRIS.filter((t) => t !== "recent").map((t) => (
+            <SelectItem key={t} value={t}>
+              {TICKET_TRI_LABELS[t]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={() => router.push(pathname)}>

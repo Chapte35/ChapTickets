@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -68,9 +69,14 @@ export function ImportWizard() {
   const [erreurFichier, setErreurFichier] = useState<string | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // Une ligne valide est incluse par défaut ; une ligne en erreur ne peut
+  // pas être cochée (rien à importer tant qu'elle n'est pas corrigée dans
+  // le fichier source). Réinitialisé à chaque nouvelle analyse de fichier.
+  const [inclusions, setInclusions] = useState<Record<number, boolean>>({});
 
   const lignesValides = lignes?.filter((l) => l.parsed !== null) ?? [];
   const lignesInvalides = lignes?.filter((l) => l.parsed === null) ?? [];
+  const lignesIncluses = lignesValides.filter((l) => inclusions[l.index]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -90,12 +96,24 @@ export function ImportWizard() {
       return;
     }
     setLignes(result.lignes);
+    // Initialisé ici (juste après avoir les lignes), pas via un useEffect
+    // dérivé de `lignes` : setState synchrone dans un effet déclenche un
+    // re-render en cascade évitable, alors que le déclencheur réel est cet
+    // événement précis (nouveau fichier chargé), pas un changement de
+    // `lignes` en général.
+    setInclusions(
+      Object.fromEntries(result.lignes.map((l) => [l.index, l.parsed !== null]))
+    );
+  }
+
+  function toggleInclusion(index: number, value: boolean) {
+    setInclusions((prev) => ({ ...prev, [index]: value }));
   }
 
   async function handleConfirmer() {
-    if (lignesValides.length === 0) return;
+    if (lignesIncluses.length === 0) return;
     setConfirming(true);
-    const result = await confirmerImport(lignesValides);
+    const result = await confirmerImport(lignesIncluses);
     setConfirming(false);
 
     if (result.crees > 0) {
@@ -165,7 +183,8 @@ export function ImportWizard() {
             <CardTitle>2. Aperçu</CardTitle>
             <CardDescription>
               <Badge variant="outline" className="mr-2">
-                {lignesValides.length} valide{lignesValides.length > 1 ? "s" : ""}
+                {lignesIncluses.length}/{lignesValides.length} sélectionnée
+                {lignesValides.length > 1 ? "s" : ""}
               </Badge>
               {lignesInvalides.length > 0 && (
                 <Badge variant="destructive">
@@ -178,18 +197,28 @@ export function ImportWizard() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8" />
                   <TableHead>#</TableHead>
                   <TableHead>Titre</TableHead>
                   <TableHead>Projet</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Priorité</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Échéance</TableHead>
                   <TableHead>Détails</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lignes.map((l) => (
                   <TableRow key={l.index} className={l.parsed ? undefined : "bg-destructive/5"}>
+                    <TableCell>
+                      <Checkbox
+                        checked={l.parsed ? (inclusions[l.index] ?? false) : false}
+                        disabled={!l.parsed}
+                        onCheckedChange={(checked) => toggleInclusion(l.index, checked === true)}
+                        aria-label={`Inclure la ligne ${l.index + 1} dans l'import`}
+                      />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{l.index + 1}</TableCell>
                     <TableCell>{l.brute.titre || "—"}</TableCell>
                     <TableCell>{l.parsed?.projet_nom ?? l.brute.projet ?? "—"}</TableCell>
@@ -198,6 +227,7 @@ export function ImportWizard() {
                       {l.parsed ? TICKET_PRIORITE_LABELS[l.parsed.priorite] : "—"}
                     </TableCell>
                     <TableCell>{l.parsed ? TICKET_STATUT_LABELS[l.parsed.statut] : "—"}</TableCell>
+                    <TableCell>{l.parsed?.date_prevue ?? "—"}</TableCell>
                     <TableCell className="max-w-[280px]">
                       {l.erreurs.length > 0 && (
                         <ul className="text-xs text-destructive list-disc list-inside">
@@ -232,16 +262,16 @@ export function ImportWizard() {
           <CardHeader>
             <CardTitle>3. Confirmer</CardTitle>
             <CardDescription>
-              {lignesInvalides.length > 0
-                ? `Seules les ${lignesValides.length} lignes valides seront importées, les ${lignesInvalides.length} en erreur seront ignorées.`
-                : `Les ${lignesValides.length} tickets seront créés.`}
+              {lignesIncluses.length === lignesValides.length
+                ? `Les ${lignesIncluses.length} tickets sélectionnés seront créés.`
+                : `${lignesIncluses.length} ticket${lignesIncluses.length > 1 ? "s" : ""} sur ${lignesValides.length} sélectionné${lignesIncluses.length > 1 ? "s" : ""} seront créés (décoche/coche des lignes ci-dessus pour ajuster).`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleConfirmer} disabled={confirming}>
+            <Button onClick={handleConfirmer} disabled={confirming || lignesIncluses.length === 0}>
               {confirming
                 ? "Import en cours..."
-                : `Confirmer l'import (${lignesValides.length} ticket${lignesValides.length > 1 ? "s" : ""})`}
+                : `Confirmer l'import (${lignesIncluses.length} ticket${lignesIncluses.length > 1 ? "s" : ""})`}
             </Button>
           </CardContent>
         </Card>
