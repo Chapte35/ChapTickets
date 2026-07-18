@@ -35,7 +35,7 @@ export function TicketKanbanReadonly({
               </h3>
               <span className="text-xs text-muted-foreground">{colonne.length}</span>
             </div>
-            <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-1.5 min-h-[80px]">
+            <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-1.5 min-h-[80px] max-h-[380px] overflow-y-auto">
               {colonne.map((t) => (
                 <Link
                   key={t.id}

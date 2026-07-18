@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -132,67 +131,97 @@ export default async function AdminTicketDetailPage({
   );
 
   return (
-    <div className="flex flex-col gap-4 max-w-2xl">
+    <div className="flex flex-col gap-4">
       <MarkTicketRead ticketId={ticket.id} />
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>{ticket.titre}</CardTitle>
-              <CardDescription>
-                {projet?.nom ?? "—"} · {client?.full_name || client?.email || "—"}
-              </CardDescription>
-            </div>
-            <Badge variant={ticketPrioriteBadgeVariant(priorite)}>
-              {TICKET_PRIORITE_LABELS[priorite]}
-            </Badge>
+
+      {/* Layout à 2 colonnes (façon Linear/GitHub Issues) : le contenu
+          narratif (description, checklist, PJ, messages) prend toute la
+          largeur disponible à gauche, les métadonnées éditables vivent
+          dans une sidebar fixe à droite. Sur mobile, la sidebar repasse
+          simplement sous le contenu principal (grid-cols-1). */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col gap-6 min-w-0">
+          <div>
+            <h1 className="text-lg font-semibold">{ticket.titre}</h1>
+            <p className="text-sm text-muted-foreground">
+              {projet?.nom ?? "—"} · {client?.full_name || client?.email || "—"}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+
           {ticketOrigine && (
             <Link
               href={`/admin/tickets/${ticketOrigine.id}`}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit"
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit -mt-4"
             >
               Fait suite à « {ticketOrigine.titre} » →
             </Link>
           )}
-          {ticket.description && (
-            <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
-          )}
 
-          <TicketTagsEditor
-            ticketId={ticket.id}
-            tagsActuels={tagsActuels}
-            tousLesTags={tousLesTags}
-          />
+          <Card>
+            <CardContent className="flex flex-col gap-6 pt-6">
+              {ticket.description && (
+                <p className="text-sm whitespace-pre-wrap max-w-prose">{ticket.description}</p>
+              )}
 
-          <StatusUpdateForm ticketId={ticket.id} currentStatut={statut} />
+              <ReopenRequestsPanel
+                ticketId={ticket.id}
+                demandes={(demandes ?? []) as unknown as DemandeReouverture[]}
+              />
 
-          <DateEcheanceForm ticketId={ticket.id} dateActuelle={ticket.date_prevue} />
+              <ChecklistPanel
+                ticketId={ticket.id}
+                items={(checklist ?? []) as unknown as ChecklistItemRow[]}
+              />
 
-          <ReopenRequestsPanel
-            ticketId={ticket.id}
-            demandes={(demandes ?? []) as unknown as DemandeReouverture[]}
-          />
+              <AttachmentsPanel ticketId={ticket.id} attachments={attachments} />
 
-          <ChecklistPanel
-            ticketId={ticket.id}
-            items={(checklist ?? []) as unknown as ChecklistItemRow[]}
-          />
+              {user && (
+                <MessageThread
+                  context={{ field: "ticket_id", value: ticket.id }}
+                  messages={(messages ?? []) as unknown as MessageRow[]}
+                  currentUserId={user.id}
+                  action={postMessageAdmin}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-          <AttachmentsPanel ticketId={ticket.id} attachments={attachments} />
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Détails</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Priorité</span>
+                <Badge variant={ticketPrioriteBadgeVariant(priorite)} className="w-fit">
+                  {TICKET_PRIORITE_LABELS[priorite]}
+                </Badge>
+              </div>
 
-          {user && (
-            <MessageThread
-              ticketId={ticket.id}
-              messages={(messages ?? []) as unknown as MessageRow[]}
-              currentUserId={user.id}
-              action={postMessageAdmin}
-            />
-          )}
-        </CardContent>
-      </Card>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Statut</span>
+                <StatusUpdateForm ticketId={ticket.id} currentStatut={statut} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Échéance</span>
+                <DateEcheanceForm ticketId={ticket.id} dateActuelle={ticket.date_prevue} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Tags</span>
+                <TicketTagsEditor
+                  ticketId={ticket.id}
+                  tagsActuels={tagsActuels}
+                  tousLesTags={tousLesTags}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

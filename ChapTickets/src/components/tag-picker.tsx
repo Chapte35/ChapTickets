@@ -8,10 +8,13 @@ export function TagPicker({
   tags,
   name = "tag_ids",
   defaultSelected = [],
+  onSelectionChange,
 }: {
   tags: Tag[];
   name?: string;
   defaultSelected?: string[];
+  /** Optionnel : reçoit la liste des tags sélectionnés à chaque changement. Sert à l'aperçu live (création de ticket), pas nécessaire pour un simple usage dans un formulaire. */
+  onSelectionChange?: (tagsSelectionnes: Tag[]) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(defaultSelected));
 
@@ -20,6 +23,7 @@ export function TagPicker({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      onSelectionChange?.(tags.filter((t) => next.has(t.id)));
       return next;
     });
   }

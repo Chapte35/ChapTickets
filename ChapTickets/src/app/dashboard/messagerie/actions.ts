@@ -36,3 +36,36 @@ export async function postMessageProjetClient(
   revalidatePath(`/dashboard/messagerie/${projetId}`);
   return { error: null };
 }
+
+/**
+ * Conversation directe du client avec l'admin (table `messages`, ticket_id
+ * null — cf. migration 0010). Un client n'a qu'un seul fil direct, le
+ * sien : on ignore volontairement toute valeur de client_id venant du
+ * formulaire et on force auth.uid(), pas la peine de faire confiance à
+ * une valeur que le client n'a de toute façon aucune raison de manipuler.
+ */
+export async function postMessageDirectClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const contenu = formData.get("contenu");
+  if (typeof contenu !== "string" || !contenu.trim()) {
+    return { error: "Message vide." };
+  }
+
+  const { error } = await supabase.from("messages").insert({
+    client_id: userId,
+    auteur_id: userId,
+    contenu: contenu.trim(),
+  });
+
+  if (error) {
+    return { error: "Impossible d'envoyer le message." };
+  }
+
+  revalidatePath(`/dashboard/messagerie/direct`);
+  return { error: null };
+}

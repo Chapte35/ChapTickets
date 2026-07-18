@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -126,75 +125,104 @@ export default async function ClientTicketDetailPage({
   );
 
   return (
-    <Card className="max-w-2xl">
+    <div className="flex flex-col gap-4">
       <MarkTicketRead ticketId={ticket.id} />
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
+
+      {/* Même layout 2 colonnes que côté admin (cf. admin/tickets/[id]) :
+          cohérence des deux fiches, et ça évite pareillement d'empiler
+          toutes les metadata au-dessus d'une colonne étroite. */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col gap-6 min-w-0">
           <div>
-            <CardTitle>{ticket.titre}</CardTitle>
-            <CardDescription>{projet?.nom ?? "—"}</CardDescription>
+            <h1 className="text-lg font-semibold">{ticket.titre}</h1>
+            <p className="text-sm text-muted-foreground">{projet?.nom ?? "—"}</p>
           </div>
-          <Badge variant={ticketPrioriteBadgeVariant(priorite)}>
-            {TICKET_PRIORITE_LABELS[priorite]}
-          </Badge>
+
+          {ticketOrigine && (
+            <Link
+              href={`/dashboard/tickets/${ticketOrigine.id}`}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit -mt-4"
+            >
+              Fait suite à « {ticketOrigine.titre} » →
+            </Link>
+          )}
+
+          <Card>
+            <CardContent className="flex flex-col gap-6 pt-6">
+              {ticket.description && (
+                <p className="text-sm whitespace-pre-wrap max-w-prose">{ticket.description}</p>
+              )}
+
+              {dejaRemplace && derniereDemande?.nouveau_ticket_id && (
+                <Link
+                  href={`/dashboard/tickets/${derniereDemande.nouveau_ticket_id}`}
+                  className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground w-fit"
+                >
+                  Réouverture acceptée — voir le nouveau ticket →
+                </Link>
+              )}
+
+              <ChecklistPanel
+                ticketId={ticket.id}
+                items={(checklist ?? []) as unknown as ChecklistItemRow[]}
+              />
+
+              <AttachmentsPanel ticketId={ticket.id} attachments={attachments} />
+
+              {user && (
+                <MessageThread
+                  context={{ field: "ticket_id", value: ticket.id }}
+                  messages={(messages ?? []) as unknown as MessageRow[]}
+                  currentUserId={user.id}
+                  action={postMessageClient}
+                />
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {ticketOrigine && (
-          <Link
-            href={`/dashboard/tickets/${ticketOrigine.id}`}
-            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit"
-          >
-            Fait suite à « {ticketOrigine.titre} » →
-          </Link>
-        )}
-        {ticket.description && (
-          <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
-        )}
 
-        <TicketTagsEditor
-          ticketId={ticket.id}
-          tagsActuels={tagsActuels}
-          tousLesTags={tousLesTags}
-        />
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Détails</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Priorité</span>
+                <Badge variant={ticketPrioriteBadgeVariant(priorite)} className="w-fit">
+                  {TICKET_PRIORITE_LABELS[priorite]}
+                </Badge>
+              </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Statut :</span>
-          <Badge variant={ticketStatutBadgeVariant(statut)}>
-            {TICKET_STATUT_LABELS[statut]}
-          </Badge>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Statut</span>
+                <Badge variant={ticketStatutBadgeVariant(statut)} className="w-fit">
+                  {TICKET_STATUT_LABELS[statut]}
+                </Badge>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Tags</span>
+                <TicketTagsEditor
+                  ticketId={ticket.id}
+                  tagsActuels={tagsActuels}
+                  tousLesTags={tousLesTags}
+                />
+              </div>
+
+              {peutDemanderReouverture && (
+                <div className="flex flex-col gap-1.5 border-t pt-4">
+                  <span className="text-xs text-muted-foreground">Actions</span>
+                  <ReopenRequestButton
+                    ticketId={ticket.id}
+                    demandeEnCours={derniereDemande}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-        {dejaRemplace && derniereDemande?.nouveau_ticket_id && (
-          <Link
-            href={`/dashboard/tickets/${derniereDemande.nouveau_ticket_id}`}
-            className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground w-fit"
-          >
-            Réouverture acceptée — voir le nouveau ticket →
-          </Link>
-        )}
-        {peutDemanderReouverture && (
-          <ReopenRequestButton
-            ticketId={ticket.id}
-            demandeEnCours={derniereDemande}
-          />
-        )}
-
-        <ChecklistPanel
-          ticketId={ticket.id}
-          items={(checklist ?? []) as unknown as ChecklistItemRow[]}
-        />
-
-        <AttachmentsPanel ticketId={ticket.id} attachments={attachments} />
-
-        {user && (
-          <MessageThread
-            ticketId={ticket.id}
-            messages={(messages ?? []) as unknown as MessageRow[]}
-            currentUserId={user.id}
-            action={postMessageClient}
-          />
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

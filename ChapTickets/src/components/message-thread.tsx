@@ -19,18 +19,37 @@ export type MessageRow = {
   } | null;
 };
 
-type PostMessageAction = (
+export type PostMessageAction = (
   prevState: MessageFormState,
   formData: FormData
 ) => Promise<MessageFormState>;
 
+/**
+ * Mécanisme générique de hidden field : `messages` sert à la fois aux fils
+ * par ticket et aux conversations directes par client (cf. migration
+ * 0010) — un message pointe soit vers un ticket, soit vers un client,
+ * jamais les deux. `messages_projet` (conversations par projet) utilise le
+ * même mécanisme avec son propre champ. Les composants restent génériques
+ * sur ce point plutôt que d'exister en plusieurs copies quasi identiques —
+ * seul le hidden field posté au serveur change.
+ */
+export type MessageThreadContext =
+  | { field: "ticket_id"; value: string }
+  | { field: "client_id"; value: string }
+  | { field: "projet_id"; value: string };
+
 const initialState: MessageFormState = { error: null };
 
-function MessageForm({
-  ticketId,
+/**
+ * Formulaire d'envoi seul, exporté pour être réutilisé aussi bien dans le
+ * fil "embarqué" d'une fiche ticket (MessageThread ci-dessous) que dans la
+ * vue "conversation plein écran" façon Instagram (ConversationThread).
+ */
+export function MessageForm({
+  context,
   action,
 }: {
-  ticketId: string;
+  context: MessageThreadContext;
   action: PostMessageAction;
 }) {
   const [state, formAction, isPending] = useActionState(action, initialState);
@@ -50,7 +69,7 @@ function MessageForm({
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-2">
-      <input type="hidden" name="ticket_id" value={ticketId} />
+      <input type="hidden" name={context.field} value={context.value} />
       <Textarea
         name="contenu"
         placeholder="Écrire un message..."
@@ -69,60 +88,82 @@ function MessageForm({
   );
 }
 
+/** Liste des bulles de messages, exportée pour la même raison que MessageForm ci-dessus. */
+export function MessageBubbleList({
+  messages,
+  currentUserId,
+}: {
+  messages: MessageRow[];
+  currentUserId: string;
+}) {
+  if (messages.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">Aucun message pour l&apos;instant.</p>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-3">
+      {messages.map((m) => {
+        const isMine = m.auteur_id === currentUserId;
+        const isAdmin = m.profiles?.role === "admin";
+        return (
+          <li
+            key={m.id}
+            className={cn("flex flex-col gap-1", isMine ? "items-end" : "items-start")}
+          >
+            <div
+              className={cn(
+                "max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                isMine
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground"
+              )}
+            >
+              {m.contenu}
+            </div>
+            <span className="text-xs text-muted-foreground px-1">
+              {isAdmin ? "Admin" : m.profiles?.full_name || m.profiles?.email || "Client"}
+              {" · "}
+              {new Date(m.created_at).toLocaleString("fr-FR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * Fil "embarqué" : utilisé sur la fiche ticket (admin + client), au milieu
+ * d'autres panneaux (checklist, PJ...) dans une Card qui grandit avec son
+ * contenu. Pas de scroll interne ici, volontairement — cf. ConversationThread
+ * pour la vue plein écran façon messagerie, dont les contraintes de hauteur
+ * sont différentes.
+ */
 export function MessageThread({
-  ticketId,
+  context,
   messages,
   currentUserId,
   action,
+  title = "Messages",
 }: {
-  ticketId: string;
+  context: MessageThreadContext;
   messages: MessageRow[];
   currentUserId: string;
   action: PostMessageAction;
+  title?: string | null;
 }) {
   return (
     <div className="flex flex-col gap-4 border-t pt-4">
-      <h2 className="text-sm font-semibold">Messages</h2>
-
-      {messages.length === 0 && (
-        <p className="text-sm text-muted-foreground">Aucun message pour l&apos;instant.</p>
-      )}
-
-      <ul className="flex flex-col gap-3">
-        {messages.map((m) => {
-          const isMine = m.auteur_id === currentUserId;
-          const isAdmin = m.profiles?.role === "admin";
-          return (
-            <li
-              key={m.id}
-              className={cn("flex flex-col gap-1", isMine ? "items-end" : "items-start")}
-            >
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
-                  isMine
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
-                )}
-              >
-                {m.contenu}
-              </div>
-              <span className="text-xs text-muted-foreground px-1">
-                {isAdmin ? "Admin" : m.profiles?.full_name || m.profiles?.email || "Client"}
-                {" · "}
-                {new Date(m.created_at).toLocaleString("fr-FR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-
-      <MessageForm ticketId={ticketId} action={action} />
+      {title && <h2 className="text-sm font-semibold">{title}</h2>}
+      <MessageBubbleList messages={messages} currentUserId={currentUserId} />
+      <MessageForm context={context} action={action} />
     </div>
   );
 }

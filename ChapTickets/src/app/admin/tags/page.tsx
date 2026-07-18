@@ -18,7 +18,7 @@ export default async function TagsPage() {
     .order("nom");
 
   return (
-    <div className="flex flex-col gap-4 max-w-lg">
+    <div className="flex flex-col gap-4 max-w-3xl">
       <Card>
         <CardHeader>
           <CardTitle>Nouveau tag</CardTitle>

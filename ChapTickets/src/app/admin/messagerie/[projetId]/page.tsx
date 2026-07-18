@@ -1,14 +1,7 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ProjetMessageThread, type ProjetMessageRow } from "@/components/projet-message-thread";
+import { ConversationThread } from "@/components/conversation-thread";
+import { type MessageRow } from "@/components/message-thread";
 import { postMessageProjetAdmin } from "../actions";
 
 export default async function MessagerieProjetAdminPage({
@@ -33,31 +26,15 @@ export default async function MessagerieProjetAdminPage({
   ]);
 
   if (error || !projet) notFound();
+  if (!user) return null;
 
   return (
-    <div className="flex flex-col gap-4 max-w-2xl">
-      <Link
-        href="/admin/messagerie"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground w-fit"
-      >
-        <ArrowLeft className="size-3.5" />
-        Toutes les conversations
-      </Link>
-      <Card>
-        <CardHeader>
-          <CardTitle>{projet.nom}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {user && (
-            <ProjetMessageThread
-              projetId={projet.id}
-              messages={(messages ?? []) as unknown as ProjetMessageRow[]}
-              currentUserId={user.id}
-              action={postMessageProjetAdmin}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <ConversationThread
+      title={projet.nom}
+      context={{ field: "projet_id", value: projet.id }}
+      messages={(messages ?? []) as unknown as MessageRow[]}
+      currentUserId={user.id}
+      action={postMessageProjetAdmin}
+    />
   );
 }

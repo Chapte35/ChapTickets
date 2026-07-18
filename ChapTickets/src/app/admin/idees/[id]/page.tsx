@@ -31,34 +31,49 @@ export default async function IdeeDetailPage({
   const projetLie = idee.projets as unknown as { nom: string } | null;
 
   return (
-    <div className="flex flex-col gap-4 max-w-lg">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Modifier l&apos;idée</CardTitle>
-          <DeleteIdeeButton ideeId={idee.id} />
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {projetLie && (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">Devenue projet</Badge>
-              <span className="text-sm text-muted-foreground">{projetLie.nom}</span>
-            </div>
-          )}
+    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="min-w-0">
+        <Card>
+          <CardHeader>
+            <CardTitle>Modifier l&apos;idée</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <IdeeEditForm
+              ideeId={idee.id}
+              titre={idee.titre}
+              description={idee.description}
+              statut={idee.statut as IdeeProjetStatut}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
-          <IdeeEditForm
-            ideeId={idee.id}
-            titre={idee.titre}
-            description={idee.description}
-            statut={idee.statut as IdeeProjetStatut}
-          />
-
-          {!idee.projet_id && (
-            <div className="border-t pt-4">
+      <div className="flex flex-col gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Projet</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {projetLie ? (
+              <div className="flex flex-col gap-1.5">
+                <Badge variant="outline" className="w-fit">Devenue projet</Badge>
+                <span className="text-sm text-muted-foreground">{projetLie.nom}</span>
+              </div>
+            ) : (
               <TransformerEnProjetForm ideeId={idee.id} titreInitial={idee.titre} />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Danger zone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DeleteIdeeButton ideeId={idee.id} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
