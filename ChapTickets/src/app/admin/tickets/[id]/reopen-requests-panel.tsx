@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ export type DemandeReouverture = {
   message: string | null;
   statut: DemandeReouvertureStatut;
   created_at: string;
+  nouveau_ticket_id: string | null;
   profiles: { email: string | null; full_name: string | null } | null;
 };
 
@@ -87,6 +89,14 @@ export function ReopenRequestsPanel({
           </div>
           {d.message && (
             <p className="text-sm text-muted-foreground">{d.message}</p>
+          )}
+          {d.statut === "acceptee" && d.nouveau_ticket_id && (
+            <Link
+              href={`/admin/tickets/${d.nouveau_ticket_id}`}
+              className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground w-fit"
+            >
+              Voir le nouveau ticket →
+            </Link>
           )}
           {d.statut === "en_attente" && (
             <DecisionButtons ticketId={ticketId} demandeId={d.id} />

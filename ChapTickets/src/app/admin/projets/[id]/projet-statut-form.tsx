@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PROJET_STATUTS, PROJET_STATUT_LABELS, type ProjetStatut } from "@/lib/types";
+import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { updateProjetStatutForm, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
@@ -25,6 +26,8 @@ export function ProjetStatutForm({
     updateProjetStatutForm,
     initialState
   );
+
+  useToastOnSuccess(isPending, state.error, "Statut du projet mis à jour.");
 
   return (
     <form action={formAction} className="flex items-end gap-2">

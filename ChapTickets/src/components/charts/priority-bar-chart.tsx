@@ -1,8 +1,13 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { TICKET_PRIORITES, TICKET_PRIORITE_LABELS, type TicketPriorite } from "@/lib/types";
-import { ChartTooltip, type SimpleTooltipProps } from "./chart-tooltip";
 
 const COULEURS: Record<TicketPriorite, string> = {
   basse: "var(--chart-3)",
@@ -11,6 +16,13 @@ const COULEURS: Record<TicketPriorite, string> = {
   urgente: "var(--destructive)",
 };
 
+const chartConfig = {
+  valeur: { label: "Tickets" },
+  ...Object.fromEntries(
+    TICKET_PRIORITES.map((p) => [p, { label: TICKET_PRIORITE_LABELS[p], color: COULEURS[p] }])
+  ),
+} satisfies ChartConfig;
+
 export function PriorityBarChart({
   repartition,
 }: {
@@ -18,41 +30,37 @@ export function PriorityBarChart({
 }) {
   const data = TICKET_PRIORITES.map((p) => ({
     priorite: p,
-    nom: TICKET_PRIORITE_LABELS[p],
     valeur: repartition[p] ?? 0,
+    fill: `var(--color-${p})`,
   }));
 
   const total = data.reduce((sum, d) => sum + d.valeur, 0);
   if (total === 0) {
     return (
-      <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
         Aucun ticket
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} margin={{ right: 10, top: 10 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-        <XAxis dataKey="nom" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis
-          tick={{ fontSize: 11 }}
+    <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+      <BarChart data={data} margin={{ left: 0, right: 10, top: 10 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey="priorite"
           tickLine={false}
           axisLine={false}
-          allowDecimals={false}
-          width={30}
+          tickMargin={8}
+          tickFormatter={(value: TicketPriorite) => TICKET_PRIORITE_LABELS[value]}
         />
-        <Tooltip
-          content={(props) => <ChartTooltip {...(props as SimpleTooltipProps)} />}
+        <YAxis tickLine={false} axisLine={false} allowDecimals={false} width={28} />
+        <ChartTooltip
           cursor={{ fill: "var(--muted)" }}
+          content={<ChartTooltipContent nameKey="priorite" hideLabel />}
         />
-        <Bar dataKey="valeur" name="Tickets" radius={[4, 4, 0, 0]}>
-          {data.map((d) => (
-            <Cell key={d.priorite} fill={COULEURS[d.priorite]} />
-          ))}
-        </Bar>
+        <Bar dataKey="valeur" radius={4} />
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }

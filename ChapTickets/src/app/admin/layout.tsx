@@ -7,6 +7,7 @@ import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/admin/calendrier", label: "Calendrier", icon: "calendrier" },
   { href: "/admin/messagerie", label: "Messagerie", icon: "messagerie" },
   { href: "/admin/idees", label: "Idées", icon: "idees" },
   { href: "/admin/projets", label: "Projets", icon: "projets" },
@@ -50,6 +51,7 @@ export default async function AdminLayout({
         items={NAV_ITEMS}
         defaultCollapsed={defaultCollapsed}
         logoutAction={logout}
+        basePath="/admin"
       />
       <main className="flex-1 p-6 overflow-x-auto">{children}</main>
     </div>

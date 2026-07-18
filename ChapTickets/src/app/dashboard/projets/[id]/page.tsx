@@ -12,6 +12,7 @@ import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
 import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
 import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
 import { TicketKanbanReadonly } from "@/components/ticket-kanban-readonly";
+import { ReleaseProgressList } from "@/components/release-progress-list";
 import { getProjetOverviewData } from "@/lib/queries/overview";
 import { PROJET_STATUT_LABELS, type ProjetStatut } from "@/lib/types";
 
@@ -23,10 +24,22 @@ export default async function ProjetOverviewClientPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const data = await getProjetOverviewData(supabase, id);
-  if (!data) notFound();
+  const result = await getProjetOverviewData(supabase, id);
+  if (!result.ok) {
+    if (result.notFound) notFound();
+    return (
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-destructive">Erreur de chargement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{result.erreur}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const { projet, stats, kanbanItems } = data;
+  const { projet, stats, kanbanItems, releasesAvecProgression } = result;
 
   return (
     <div className="flex flex-col gap-4">
@@ -96,6 +109,15 @@ export default async function ProjetOverviewClientPage({
         </CardHeader>
         <CardContent>
           <TicketKanbanReadonly tickets={kanbanItems} basePath="/dashboard/tickets" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Releases</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReleaseProgressList releases={releasesAvecProgression} />
         </CardContent>
       </Card>
     </div>

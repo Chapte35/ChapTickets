@@ -353,6 +353,182 @@ raisonnable — mais si un ticket est rouvert puis re-résolu plusieurs fois,
 seule la dernière transition compte, pas l'historique complet. Précis à
 l'usage MVP, pas audit-grade.
 
+## Sprint 8 — Calendrier & releases
+
+- **Releases** (`releases`, par projet) : nom, date, description. Un ticket
+  "appartient" à une release par calcul (tous les tickets créés entre la
+  release précédente et celle-ci), **pas** par une case à cocher stockée —
+  décision explicite pour ne pas avoir à maintenir ce lien à la main.
+  Logique dans `src/lib/queries/releases.ts` (`calculerProgressionReleases`).
+- **Échéance de ticket** (`tickets.date_prevue`) : admin uniquement peut la
+  définir (création + fiche ticket), le client la voit apparaître sur le
+  calendrier mais ne l'édite pas — cohérent avec "seul l'admin planifie".
+- **Calendrier** : `/admin/calendrier` (global, filtre par projet) et
+  `/dashboard/calendrier` (scopé aux projets du client via RLS, filtre
+  seulement si plusieurs projets). Vue mensuelle faite maison (pas de lib
+  de calendrier externe) — tickets à échéance + releases affichés comme
+  puces cliquables sur leur jour.
+- **Changement de comportement important sur la réouverture** (Sprint 2) :
+  accepter une demande de réouverture ne remet plus le même ticket à
+  `ouvert`. Ça **crée un nouveau ticket** (`ticket_origine_id` pointant
+  vers l'original), qui lui reste `résolu`/`fermé` pour toujours. Décision
+  explicite de ta part : un ticket ne doit jamais chevaucher deux releases
+  puisque sa date de création est fixe. Le nouveau ticket porte le même
+  titre/description/projet/client/priorité que l'original ; les tags,
+  checklist, pièces jointes et messages, eux, **ne sont pas recopiés** —
+  ils restent attachés à l'historique de l'ancien ticket. Si tu veux que
+  certains éléments soient repris automatiquement (les tags par exemple),
+  dis-le, c'est un ajout ciblé dans `traiterDemandeReouverture`.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0008_calendrier_releases.sql` — ajoute la table
+`releases`, `tickets.date_prevue`, `tickets.ticket_origine_id`,
+`demandes_reouverture.nouveau_ticket_id`.
+
+### Ce qui n'a pas été fait (scope contrôlé)
+
+- Pas de vue "semaine" ou "jour" sur le calendrier, uniquement mensuelle.
+- Pas de drag & drop pour changer la date d'un ticket directement depuis le
+  calendrier (il faut passer par la fiche ticket) — cohérent avec la
+  décision du Sprint 7 de garder les vues de synthèse en lecture seule côté
+  actions destructives/structurantes.
+- Le client ne peut pas créer de release ni définir d'échéance — les deux
+  restent des outils de planification admin.
+
+## Calendrier — refonte UX (après retour direct)
+
+Le premier jet du calendrier admin obligeait à filtrer un projet pour faire
+apparaître un formulaire de création de release planqué en bas de page —
+mauvaise UX, signalée telle quelle. Remplacé par une interaction directe :
+
+- **Chaque case du calendrier admin** affiche un bouton `+` au survol
+  (`src/components/calendar/day-actions-dialog.tsx`) qui ouvre un dialog
+  avec deux actions : créer une release à cette date, ou assigner un
+  ticket existant (parmi les non résolus/fermés) à cette date.
+- Nouveau composant shadcn `dialog.tsx` (`@radix-ui/react-dialog`).
+- Le calendrier client **reste en lecture seule**, volontairement — cohérent
+  avec la règle du Sprint 8 ("le client ne planifie pas"). `MonthCalendar`
+  accepte un prop `interactif` optionnel : absent côté client, les cases
+  redeviennent statiques automatiquement, pas de code dupliqué entre les
+  deux vues.
+- Ancien formulaire de création de release en bas de page (`create-release-form.tsx`)
+  supprimé — devenu redondant, deux façons de faire la même chose est pire
+  qu'une seule.
+
+## Calendrier — changements de statut automatiques
+
+Les changements de statut d'un ticket apparaissent maintenant tout seuls
+sur le calendrier (admin + client), sans rien assigner manuellement.
+
+- Nouvelle table `ticket_statut_historique` — trace chaque **vraie**
+  transition (pas un update qui repose le même statut), alimentée par
+  `updateTicketStatus` (le seul endroit où un statut change).
+- Affiché comme troisième type d'événement sur le calendrier (`type:
+  "statut"`), distinct visuellement des échéances et des releases
+  (icône ↻, couleur `--chart-2`), au jour réel du changement.
+- Le nouveau flux de réouverture (Sprint 8) ne génère pas d'entrée
+  d'historique : créer un nouveau ticket n'est pas un "changement de
+  statut", c'est une création. Seul `updateTicketStatus` écrit dans cette
+  table.
+
+### Nouvelle migration à appliquer
+
+`supabase/migrations/0009_historique_statuts.sql`
+
+## Page Projets — refonte, et fix du 404 sur l'overview
+
+- **`/admin/projets` refaite entièrement** : plus de kanban de projets (cartes
+  déplaçables entre à démarrer/en cours/en pause/terminé) — signalé comme
+  sans utilité réelle, retiré. À la place, un kanban de **tickets** par
+  projet (réutilise `TicketKanbanReadonly`, déjà utilisé sur les pages
+  overview — pas de nouveau composant). `@dnd-kit` désinstallé : plus
+  aucun usage dans le code après la suppression de l'ancien kanban.
+- Le statut du projet (à démarrer/en cours/...) reste modifiable, juste
+  depuis `/admin/projets/[id]` (select), pas plus depuis un board dédié.
+
+- **Fix du 404 sur `/admin/projets/[id]/overview`** : `getProjetOverviewData`
+  distinguait mal "erreur Supabase" et "projet introuvable" — les deux
+  finissaient en 404 générique, ce qui rend un vrai bug indiscernable d'un
+  ID invalide. Séparé en deux cas explicites (`notFound: true` vs `erreur:
+  string`) ; une vraie erreur s'affiche maintenant sur la page au lieu de
+  disparaître dans un 404 muet. Si le bug revient, le message d'erreur réel
+  sera visible directement sur l'écran plutôt que dans les logs serveur.
+
+## Uniformisation avec les vrais composants shadcn
+
+Les graphiques et cartes de stats étaient faits "à la main" (div stylées à
+grand coup de Tailwind) plutôt qu'avec les vrais composants shadcn. Corrigé
+en récupérant le code source réel depuis le repo `shadcn-ui/ui` (pas
+reconstruit de mémoire, pour éviter un nouveau décalage de version comme
+celui qu'on a eu sur Tailwind/Next) :
+
+- **`src/components/ui/chart.tsx`** : vrai composant Chart officiel
+  (`ChartContainer`, `ChartTooltip`, `ChartTooltipContent`, `ChartLegend`,
+  `ChartLegendContent`, type `ChartConfig`). Les trois graphiques
+  (`ticket-status-donut.tsx`, `priority-bar-chart.tsx`,
+  `tickets-over-time-chart.tsx`) sont reconstruits dessus.
+- **`KpiCard`** : reconstruit sur le pattern "Section Cards" du dashboard
+  officiel shadcn (dégradé subtil, `CardDescription`/`CardTitle`/
+  `CardAction`, footer). Mêmes props qu'avant (`label`, `valeur`,
+  `sousTexte`, `accent`) — aucune page appelante à modifier, juste le
+  rendu qui change. Nouveau prop optionnel `badge` si tu veux ajouter une
+  pastille de tendance plus tard.
+- **`Progress`** (nouveau composant shadcn) : remplace les barres de
+  progression maison sur la checklist et les releases.
+- Écart volontaire par rapport au fichier source officiel de `progress.tsx` :
+  la version shadcn actuelle importe depuis le paquet unifié `radix-ui`,
+  alors qu'on a installé des `@radix-ui/react-*` individuels partout
+  ailleurs dans ce projet (tooltip, select, dialog...). Adapté l'import
+  pour rester cohérent avec l'existant plutôt que de mélanger deux
+  conventions de dépendances dans le même projet.
+
+## Vague de composants shadcn supplémentaires
+
+Suite à "vas-y à fond" : sept nouveaux composants shadcn installés (code
+source réel récupéré depuis `shadcn-ui/ui`, même discipline que pour les
+charts), avec de vraies fonctionnalités bâties dessus plutôt que des
+composants posés sans usage.
+
+- **Data Table** (`@tanstack/react-table`) : `src/components/tickets-data-table.tsx`,
+  tickets triables par colonne (titre, projet, client, priorité, statut,
+  date). Remplace les listes simples sur le dashboard admin.
+- **Tabs** : dashboard admin réorganisé — Urgences/Récents dans un seul
+  bloc à onglets plutôt que deux cartes empilées.
+- **Avatar** (le vrai, radix) : remplace mon `Avatar` fait main partout
+  (fichier supprimé). Utilisé dans la Data Table et l'overview projet.
+- **Hover Card** : survol du titre d'un ticket dans la Data Table →
+  aperçu de sa description sans naviguer.
+- **Command** (`cmdk`) — **palette de recherche globale (⌘K)** : tickets +
+  projets, accessible depuis n'importe quelle page (bouton en haut de la
+  sidebar ou raccourci clavier). RLS scope automatiquement les résultats
+  (un client ne voit que ses tickets/projets).
+- **Sonner** (toasts) : `<Toaster />` monté globalement. Ajouté sur les
+  actions qui n'avaient aucun retour visuel explicite jusqu'ici :
+  changement de statut, création de tag, édition/statut de projet,
+  rattachement de client, upload de pièce jointe, création de release et
+  assignation de ticket au calendrier. **Volontairement pas ajouté** sur
+  l'ajout d'élément de checklist — trop fréquent, le feedback visuel
+  immédiat (l'élément apparaît) suffit déjà, un toast dessus aurait été du
+  bruit plutôt que de l'info.
+- **Empty** : état vide de la Data Table et de "Projets en cours" sur le
+  dashboard. Pas généralisé à absolument tous les "Aucun X" du site — fait
+  sur les emplacements les plus visibles, pas une passe exhaustive.
+
+### Nouveau helper partagé
+
+`src/hooks/use-toast-on-success.ts` : évite de dupliquer le pattern
+"toast quand une action passe de pending à réussie" dans chaque
+formulaire — un seul hook, sept formulaires l'utilisent.
+
+### Dette / limite connue
+
+Un warning ESLint non bloquant sur `tickets-data-table.tsx` :
+`useReactTable()` (TanStack Table) n'est pas compatible avec le nouveau
+React Compiler de Next 16 pour la mémoïsation automatique — limitation
+connue de la lib, pas un bug introduit ici. Zéro impact fonctionnel,
+juste un composant que le compilateur choisit de ne pas optimiser.
+
 ## Ce qu'il te reste à faire (je n'ai pas les accès pour ça)
 
 ### 1. Créer le projet Supabase

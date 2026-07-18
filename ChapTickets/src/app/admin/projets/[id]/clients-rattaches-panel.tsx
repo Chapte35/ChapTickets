@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ClientOption } from "@/lib/queries/tickets";
+import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { attacherClient, detacherClient, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
@@ -37,6 +38,8 @@ export function ClientsRattachesPanel({
   clientsDisponibles: ClientOption[];
 }) {
   const [state, formAction, isPending] = useActionState(attacherClient, initialState);
+
+  useToastOnSuccess(isPending, state.error, "Client rattaché.");
 
   return (
     <div className="flex flex-col gap-3">

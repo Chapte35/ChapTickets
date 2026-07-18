@@ -1,60 +1,112 @@
 "use client";
 
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Label, Pie, PieChart } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { TICKET_STATUTS, TICKET_STATUT_LABELS, type TicketStatut } from "@/lib/types";
-import { ChartTooltip, type SimpleTooltipProps } from "./chart-tooltip";
 
-const COULEURS: Record<TicketStatut, string> = {
-  ouvert: "var(--chart-1)",
-  en_cours: "var(--chart-4)",
-  en_attente_client: "var(--chart-5)",
-  resolu: "var(--chart-2)",
-  ferme: "var(--chart-3)",
-};
+// Structure identique à l'exemple officiel : une clé "globale" (sans
+// couleur, juste un label pour le centre du donut), puis une clé par
+// catégorie avec sa couleur — pas de structure "à moi" en plus.
+const chartConfig = {
+  valeur: {
+    label: "Tickets",
+  },
+  ouvert: {
+    label: TICKET_STATUT_LABELS.ouvert,
+    color: "var(--chart-1)",
+  },
+  en_cours: {
+    label: TICKET_STATUT_LABELS.en_cours,
+    color: "var(--chart-4)",
+  },
+  en_attente_client: {
+    label: TICKET_STATUT_LABELS.en_attente_client,
+    color: "var(--chart-5)",
+  },
+  resolu: {
+    label: TICKET_STATUT_LABELS.resolu,
+    color: "var(--chart-2)",
+  },
+  ferme: {
+    label: TICKET_STATUT_LABELS.ferme,
+    color: "var(--chart-3)",
+  },
+} satisfies ChartConfig;
 
 export function TicketStatusDonut({
   repartition,
 }: {
   repartition: Record<TicketStatut, number>;
 }) {
-  const data = TICKET_STATUTS.filter((s) => repartition[s] > 0).map((s) => ({
+  const chartData = TICKET_STATUTS.filter((s) => repartition[s] > 0).map((s) => ({
     statut: s,
-    nom: TICKET_STATUT_LABELS[s],
     valeur: repartition[s],
+    fill: `var(--color-${s})`,
   }));
 
-  const total = data.reduce((sum, d) => sum + d.valeur, 0);
+  const total = chartData.reduce((acc, curr) => acc + curr.valeur, 0);
 
   if (total === 0) {
     return (
-      <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
         Aucun ticket
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ChartContainer
+      config={chartConfig}
+      className="mx-auto aspect-square max-h-[250px]"
+    >
       <PieChart>
-        <Pie
-          data={data}
-          dataKey="valeur"
-          nameKey="nom"
-          innerRadius={55}
-          outerRadius={80}
-          paddingAngle={2}
-        >
-          {data.map((d) => (
-            <Cell key={d.statut} fill={COULEURS[d.statut]} />
-          ))}
-        </Pie>
-        <Tooltip content={(props) => <ChartTooltip {...(props as SimpleTooltipProps)} />} />
-        <Legend
-          iconType="circle"
-          iconSize={8}
-          wrapperStyle={{ fontSize: 12 }}
+        <ChartTooltip
+          cursor={false}
+          content={<ChartTooltipContent hideLabel />}
         />
+        <Pie
+          data={chartData}
+          dataKey="valeur"
+          nameKey="statut"
+          innerRadius={60}
+          strokeWidth={5}
+        >
+          <Label
+            content={({ viewBox }) => {
+              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                return (
+                  <text
+                    x={viewBox.cx}
+                    y={viewBox.cy}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    <tspan
+                      x={viewBox.cx}
+                      y={viewBox.cy}
+                      className="fill-foreground text-3xl font-bold"
+                    >
+                      {total.toLocaleString()}
+                    </tspan>
+                    <tspan
+                      x={viewBox.cx}
+                      y={(viewBox.cy || 0) + 24}
+                      className="fill-muted-foreground"
+                    >
+                      Tickets
+                    </tspan>
+                  </text>
+                );
+              }
+            }}
+          />
+        </Pie>
       </PieChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }

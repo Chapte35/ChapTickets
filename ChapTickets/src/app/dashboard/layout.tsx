@@ -7,6 +7,7 @@ import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/dashboard", label: "Mon espace", icon: "home" },
   { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/dashboard/calendrier", label: "Calendrier", icon: "calendrier" },
   { href: "/dashboard/messagerie", label: "Messagerie", icon: "messagerie" },
 ];
 
@@ -40,6 +41,7 @@ export default async function DashboardLayout({
         items={NAV_ITEMS}
         defaultCollapsed={defaultCollapsed}
         logoutAction={logout}
+        basePath="/dashboard"
       />
       <main className="flex-1 p-6 overflow-x-auto">{children}</main>
     </div>

@@ -3,12 +3,25 @@ import { createClient } from "@/lib/supabase/server";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TicketList } from "@/components/ticket-list";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
+import { FolderKanban } from "lucide-react";
+import { TicketsDataTable } from "@/components/tickets-data-table";
 import { getAdminDashboardData } from "@/lib/queries/dashboard";
 import { buildTicketStats, type TicketPourStats } from "@/lib/stats/ticket-stats";
 import { KpiCard } from "@/components/charts/kpi-card";
@@ -75,25 +88,25 @@ export default async function AdminHomePage() {
         </Card>
       </div>
 
-      {/* Listes : 3 colonnes sur grand écran plutôt qu'empilées en pleine largeur */}
+      {/* Table de tickets (onglets Urgences/Récents) + projets en cours à côté */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Urgences</CardTitle>
-            <CardDescription>Priorité urgente, pas encore résolus ni fermés.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TicketList tickets={urgents} basePath="/admin/tickets" showClient />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Tickets récents</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TicketList tickets={recents} basePath="/admin/tickets" showClient />
-          </CardContent>
+        <Card className="xl:col-span-2">
+          <Tabs defaultValue="urgences">
+            <CardHeader>
+              <TabsList>
+                <TabsTrigger value="urgences">Urgences ({urgents.length})</TabsTrigger>
+                <TabsTrigger value="recents">Récents ({recents.length})</TabsTrigger>
+              </TabsList>
+            </CardHeader>
+            <CardContent>
+              <TabsContent value="urgences">
+                <TicketsDataTable tickets={urgents} />
+              </TabsContent>
+              <TabsContent value="recents">
+                <TicketsDataTable tickets={recents} />
+              </TabsContent>
+            </CardContent>
+          </Tabs>
         </Card>
 
         <Card>
@@ -102,9 +115,15 @@ export default async function AdminHomePage() {
           </CardHeader>
           <CardContent>
             {projetsEnCours.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4">
-                Aucun projet en cours pour l&apos;instant.
-              </p>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <FolderKanban />
+                  </EmptyMedia>
+                  <EmptyTitle>Aucun projet en cours</EmptyTitle>
+                  <EmptyDescription>Rien à afficher pour l&apos;instant.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
             {projetsEnCours.length > 0 && (
               <ul className="flex flex-col divide-y">

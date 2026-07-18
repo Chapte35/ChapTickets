@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { updateProjet, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
@@ -19,6 +20,8 @@ export function ProjetEditForm({
   description: string | null;
 }) {
   const [state, formAction, isPending] = useActionState(updateProjet, initialState);
+
+  useToastOnSuccess(isPending, state.error, "Projet mis à jour.");
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

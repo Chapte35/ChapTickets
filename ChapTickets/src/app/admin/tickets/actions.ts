@@ -36,6 +36,8 @@ export async function createTicketAdmin(
     return { error: "Priorité invalide." };
   }
 
+  const dateEcheance = formData.get("date_prevue");
+
   const { data: ticket, error } = await supabase
     .from("tickets")
     .insert({
@@ -45,6 +47,7 @@ export async function createTicketAdmin(
       client_id: clientId,
       priorite,
       created_by: userId,
+      date_prevue: typeof dateEcheance === "string" && dateEcheance ? dateEcheance : null,
     })
     .select("id")
     .single();
@@ -88,7 +91,7 @@ export async function updateTicketStatus(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { supabase, isAdmin } = await requireAdmin();
+  const { supabase, isAdmin, userId } = await requireAdmin();
   if (!isAdmin) return { error: "Action réservée à l'admin." };
 
   const ticketId = formData.get("ticket_id");
@@ -104,6 +107,14 @@ export async function updateTicketStatus(
     return { error: "Statut invalide." };
   }
 
+  // Statut actuel lu avant modification, pour ne logger dans l'historique
+  // que les vrais changements (pas un "update" qui remet le même statut).
+  const { data: avant } = await supabase
+    .from("tickets")
+    .select("statut")
+    .eq("id", ticketId)
+    .single();
+
   const { error } = await supabase
     .from("tickets")
     .update({ statut, updated_at: new Date().toISOString() })
@@ -113,8 +124,25 @@ export async function updateTicketStatus(
     return { error: `Erreur de mise à jour : ${error.message}` };
   }
 
+  if (avant && avant.statut !== statut) {
+    const { error: historiqueError } = await supabase
+      .from("ticket_statut_historique")
+      .insert({
+        ticket_id: ticketId,
+        ancien_statut: avant.statut,
+        nouveau_statut: statut,
+        changed_by: userId,
+      });
+    if (historiqueError) {
+      // Le changement de statut lui-même a réussi — on ne fait pas échouer
+      // toute l'action pour un souci sur une table annexe d'historique.
+      console.error("[updateTicketStatus] échec log historique:", historiqueError.message);
+    }
+  }
+
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");
+  revalidatePath("/admin/calendrier");
   return { error: null };
 }
 
@@ -144,14 +172,43 @@ export async function traiterDemandeReouverture(
     return { error: "Requête invalide." };
   }
 
+  let nouveauTicketId: string | null = null;
+
   if (decision === "acceptee") {
-    const { error: ticketError } = await supabase
+    // On récupère les infos nécessaires pour cloner un nouveau ticket —
+    // l'original reste tel quel (résolu/fermé), c'est le nouveau qui
+    // devient "ouvert". Ça garantit qu'un ticket n'a jamais qu'une seule
+    // date de création, donc jamais qu'une seule release possible.
+    const { data: original, error: fetchError } = await supabase
       .from("tickets")
-      .update({ statut: "ouvert", updated_at: new Date().toISOString() })
-      .eq("id", ticketId);
-    if (ticketError) {
-      return { error: `Erreur ticket : ${ticketError.message}` };
+      .select("titre, description, projet_id, client_id, priorite")
+      .eq("id", ticketId)
+      .single();
+
+    if (fetchError || !original) {
+      return { error: "Ticket d'origine introuvable." };
     }
+
+    const { data: nouveau, error: creationError } = await supabase
+      .from("tickets")
+      .insert({
+        titre: original.titre,
+        description: original.description,
+        projet_id: original.projet_id,
+        client_id: original.client_id,
+        priorite: original.priorite,
+        created_by: userId,
+        statut: "ouvert",
+        ticket_origine_id: ticketId,
+      })
+      .select("id")
+      .single();
+
+    if (creationError || !nouveau) {
+      return { error: `Erreur création du nouveau ticket : ${creationError?.message ?? "inconnue"}` };
+    }
+
+    nouveauTicketId = nouveau.id;
   }
 
   const { error: demandeError } = await supabase
@@ -160,6 +217,7 @@ export async function traiterDemandeReouverture(
       statut: decision,
       traitee_at: new Date().toISOString(),
       traitee_par: userId,
+      nouveau_ticket_id: nouveauTicketId,
     })
     .eq("id", demandeId);
 
@@ -168,6 +226,34 @@ export async function traiterDemandeReouverture(
   }
 
   revalidatePath(`/admin/tickets/${ticketId}`);
+  if (nouveauTicketId) revalidatePath(`/admin/tickets/${nouveauTicketId}`);
+  revalidatePath("/admin/tickets");
+  return { error: null };
+}
+
+export async function updateDateEcheance(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const dateEcheance = formData.get("date_prevue");
+
+  if (typeof ticketId !== "string" || !ticketId) {
+    return { error: "Ticket invalide." };
+  }
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ date_prevue: typeof dateEcheance === "string" && dateEcheance ? dateEcheance : null })
+    .eq("id", ticketId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/calendrier");
   return { error: null };
 }
 
@@ -200,4 +286,58 @@ export async function postMessageAdmin(
 
   revalidatePath(`/admin/tickets/${ticketId}`);
   return { error: null };
+}
+
+/**
+ * Supprime les fichiers Storage d'un ticket avant de le supprimer lui-même
+ * — la cascade DB nettoie bien la ligne `ticket_attachments`, mais pas le
+ * fichier binaire dans le bucket (Storage n'est pas soumis aux contraintes
+ * de clé étrangère Postgres), qui resterait sinon orphelin indéfiniment.
+ */
+async function nettoyerPiecesJointes(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+  ticketId: string
+) {
+  const { data: attachments } = await supabase
+    .from("ticket_attachments")
+    .select("storage_path")
+    .eq("ticket_id", ticketId);
+
+  if (attachments && attachments.length > 0) {
+    await supabase.storage
+      .from("ticket-attachments")
+      .remove(attachments.map((a) => a.storage_path));
+  }
+}
+
+export async function deleteTicket(ticketId: string): Promise<{ error: string | null }> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  await nettoyerPiecesJointes(supabase, ticketId);
+
+  const { error } = await supabase.from("tickets").delete().eq("id", ticketId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/calendrier");
+  return { error: null };
+}
+
+export async function deleteTicketsBulk(
+  ticketIds: string[]
+): Promise<{ supprimes: number; echecs: number }> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { supprimes: 0, echecs: ticketIds.length };
+
+  let supprimes = 0;
+  for (const id of ticketIds) {
+    await nettoyerPiecesJointes(supabase, id);
+    const { error } = await supabase.from("tickets").delete().eq("id", id);
+    if (!error) supprimes++;
+  }
+
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/calendrier");
+  return { supprimes, echecs: ticketIds.length - supprimes };
 }

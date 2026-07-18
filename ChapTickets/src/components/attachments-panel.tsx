@@ -3,6 +3,7 @@
 import { useActionState, useRef } from "react";
 import { Paperclip, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { uploadAttachment, type ActionResult } from "@/lib/actions/attachments";
 
 export type AttachmentRow = {
@@ -31,6 +32,8 @@ export function AttachmentsPanel({
 }) {
   const [state, formAction, isPending] = useActionState(uploadAttachment, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+
+  useToastOnSuccess(isPending, state.error, "Fichier envoyé.");
 
   return (
     <div className="flex flex-col gap-3 border-t pt-4">

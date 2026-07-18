@@ -121,6 +121,11 @@ export function CreateTicketAdminForm({
       </div>
 
       <div className="flex flex-col gap-2">
+        <Label htmlFor="date_prevue">Échéance (optionnel, calendrier)</Label>
+        <Input id="date_prevue" name="date_prevue" type="date" className="w-[180px]" />
+      </div>
+
+      <div className="flex flex-col gap-2">
         <Label>Tags</Label>
         <TagPicker tags={tags} />
       </div>

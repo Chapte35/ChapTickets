@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { TAG_COLORS, TAG_COLOR_CLASSES } from "@/lib/types";
+import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { createTag, type FormState } from "./actions";
 
 const initialState: FormState = { error: null };
 
 export function CreateTagForm() {
   const [state, formAction, isPending] = useActionState(createTag, initialState);
+
+  useToastOnSuccess(isPending, state.error, "Tag créé.");
 
   return (
     <form action={formAction} className="flex flex-col gap-4 max-w-sm">

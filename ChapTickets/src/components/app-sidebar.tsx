@@ -15,11 +15,14 @@ import {
   Kanban,
   Tag,
   MessageCircle,
+  Calendar,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { GlobalCommandMenu } from "@/components/global-command-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -44,6 +47,7 @@ const ICONS = {
   projets: Kanban,
   tags: Tag,
   messagerie: MessageCircle,
+  calendrier: Calendar,
   clients: Users,
   home: Home,
 } satisfies Record<string, LucideIcon>;
@@ -103,6 +107,7 @@ export function AppSidebar({
   defaultCollapsed,
   logoutAction,
   footer,
+  basePath,
 }: {
   title: string;
   items: SidebarItem[];
@@ -110,6 +115,8 @@ export function AppSidebar({
   logoutAction: () => void | Promise<void>;
   /** Contenu optionnel sous le titre (ex: badge de rôle) — pas affiché en mode réduit. */
   footer?: ReactNode;
+  /** Pour la recherche globale (Cmd+K) : construit les liens de résultat. */
+  basePath: "/admin" | "/dashboard";
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const pathname = usePathname();
@@ -149,6 +156,36 @@ export function AppSidebar({
 
       {footer && !collapsed && <div className="px-3 pb-2">{footer}</div>}
 
+      <div className="px-2 pb-2">
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-7 mx-auto flex"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-command-menu"))}
+                aria-label="Rechercher"
+              >
+                <Search className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Rechercher (⌘K)</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start gap-2 text-muted-foreground font-normal"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-command-menu"))}
+          >
+            <Search className="size-3.5" />
+            Rechercher...
+            <span className="ml-auto text-xs">⌘K</span>
+          </Button>
+        )}
+      </div>
+
       <nav className="flex flex-1 flex-col gap-1 px-2">
         {items.map((item) => (
           <SidebarLink
@@ -159,6 +196,8 @@ export function AppSidebar({
           />
         ))}
       </nav>
+
+      <GlobalCommandMenu basePath={basePath} />
 
       <div className="border-t px-2 py-2 flex flex-col gap-1">
         <ThemeToggle collapsed={collapsed} />

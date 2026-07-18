@@ -4,6 +4,7 @@ import { useActionState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   createChecklistItem,
@@ -84,14 +85,7 @@ export function ChecklistPanel({
         )}
       </div>
 
-      {total > 0 && (
-        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
+      {total > 0 && <Progress value={pct} className="h-1.5" />}
 
       {items.length > 0 && (
         <ul className="flex flex-col gap-1.5">

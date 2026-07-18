@@ -197,3 +197,11 @@ export type Tag = {
   nom: string;
   couleur: TagColor;
 };
+
+export type Release = {
+  id: string;
+  projet_id: string;
+  nom: string;
+  date: string;
+  description: string | null;
+};

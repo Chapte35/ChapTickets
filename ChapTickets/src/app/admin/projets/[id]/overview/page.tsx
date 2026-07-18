@@ -7,13 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar } from "@/components/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { KpiCard } from "@/components/charts/kpi-card";
 import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
 import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
 import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
 import { TicketKanbanReadonly } from "@/components/ticket-kanban-readonly";
+import { ReleaseProgressList } from "@/components/release-progress-list";
 import { getProjetOverviewData } from "@/lib/queries/overview";
+import { initiales } from "@/lib/initiales";
 import { PROJET_STATUT_LABELS, type ProjetStatut } from "@/lib/types";
 
 export default async function ProjetOverviewAdminPage({
@@ -24,10 +26,22 @@ export default async function ProjetOverviewAdminPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const data = await getProjetOverviewData(supabase, id);
-  if (!data) notFound();
+  const result = await getProjetOverviewData(supabase, id);
+  if (!result.ok) {
+    if (result.notFound) notFound();
+    return (
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-destructive">Erreur de chargement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{result.erreur}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const { projet, stats, clients, kanbanItems } = data;
+  const { projet, stats, clients, kanbanItems, releasesAvecProgression } = result;
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,9 +53,11 @@ export default async function ProjetOverviewAdminPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex -space-x-1.5">
+          <div className="flex items-center -space-x-2">
             {clients.map((c) => (
-              <Avatar key={c.id} nom={c.full_name || c.email || "?"} className="ring-2 ring-background" />
+              <Avatar key={c.id} size="sm" className="ring-2 ring-background">
+                <AvatarFallback>{initiales(c.full_name || c.email || "?")}</AvatarFallback>
+              </Avatar>
             ))}
           </div>
           <Link
@@ -104,6 +120,15 @@ export default async function ProjetOverviewAdminPage({
         </CardHeader>
         <CardContent>
           <TicketKanbanReadonly tickets={kanbanItems} basePath="/admin/tickets" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Releases</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReleaseProgressList releases={releasesAvecProgression} />
         </CardContent>
       </Card>
     </div>

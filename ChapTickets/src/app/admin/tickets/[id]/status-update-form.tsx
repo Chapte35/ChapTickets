@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TICKET_STATUTS, TICKET_STATUT_LABELS, type TicketStatut } from "@/lib/types";
+import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
 import { updateTicketStatus, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
@@ -25,6 +26,8 @@ export function StatusUpdateForm({
     updateTicketStatus,
     initialState
   );
+
+  useToastOnSuccess(isPending, state.error, "Statut mis à jour.");
 
   return (
     <form action={formAction} className="flex items-end gap-2">

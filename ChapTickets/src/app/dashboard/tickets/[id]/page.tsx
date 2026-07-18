@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -50,12 +51,14 @@ export default async function ClientTicketDetailPage({
   ] = await Promise.all([
     supabase
       .from("tickets")
-      .select("id, titre, description, statut, priorite, created_at, projets(nom)")
+      .select(
+        "id, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom)"
+      )
       .eq("id", id)
       .single(),
     supabase
       .from("demandes_reouverture")
-      .select("statut")
+      .select("statut, nouveau_ticket_id")
       .eq("ticket_id", id)
       .order("created_at", { ascending: false })
       .limit(1),
@@ -84,7 +87,24 @@ export default async function ClientTicketDetailPage({
   const projet = ticket.projets as unknown as { nom: string } | null;
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
-  const peutDemanderReouverture = STATUTS_ELIGIBLES_REOUVERTURE.includes(statut);
+  const derniereDemande = demandes?.[0] ?? null;
+  // Une fois une demande acceptée, ce ticket est remplacé par un nouveau —
+  // pas la peine (et pas cohérent) de permettre une nouvelle demande dessus.
+  const dejaRemplace = derniereDemande?.statut === "acceptee";
+  const peutDemanderReouverture =
+    STATUTS_ELIGIBLES_REOUVERTURE.includes(statut) && !dejaRemplace;
+
+  // Requête séparée plutôt qu'une jointure auto-référencée (cf. fiche
+  // admin pour le détail de pourquoi ce choix).
+  const ticketOrigine = ticket.ticket_origine_id
+    ? (
+        await supabase
+          .from("tickets")
+          .select("id, titre")
+          .eq("id", ticket.ticket_origine_id)
+          .single()
+      ).data
+    : null;
 
   const tagsActuels = (ticketTagsRows ?? [])
     .map((r) => r.tags as unknown as Tag | null)
@@ -120,6 +140,14 @@ export default async function ClientTicketDetailPage({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {ticketOrigine && (
+          <Link
+            href={`/dashboard/tickets/${ticketOrigine.id}`}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit"
+          >
+            Fait suite à « {ticketOrigine.titre} » →
+          </Link>
+        )}
         {ticket.description && (
           <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
         )}
@@ -136,10 +164,18 @@ export default async function ClientTicketDetailPage({
             {TICKET_STATUT_LABELS[statut]}
           </Badge>
         </div>
+        {dejaRemplace && derniereDemande?.nouveau_ticket_id && (
+          <Link
+            href={`/dashboard/tickets/${derniereDemande.nouveau_ticket_id}`}
+            className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground w-fit"
+          >
+            Réouverture acceptée — voir le nouveau ticket →
+          </Link>
+        )}
         {peutDemanderReouverture && (
           <ReopenRequestButton
             ticketId={ticket.id}
-            demandeEnCours={demandes?.[0] ?? null}
+            demandeEnCours={derniereDemande}
           />
         )}
 

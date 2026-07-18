@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildTicketStats, type TicketPourStats } from "@/lib/stats/ticket-stats";
+import { calculerProgressionReleases, getReleasesDuProjet } from "@/lib/queries/releases";
 import type { TicketStatut, TicketPriorite } from "@/lib/types";
 
 export async function getProjetOverviewData(supabase: SupabaseClient, projetId: string) {
-  const [{ data: projet, error }, { data: ticketsRows }, { data: clientsRows }] =
+  const [{ data: projet, error }, { data: ticketsRows }, { data: clientsRows }, releases] =
     await Promise.all([
       supabase.from("projets").select("id, nom, description, statut").eq("id", projetId).single(),
       supabase
@@ -11,9 +12,21 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
         .select("id, titre, statut, priorite, created_at, updated_at")
         .eq("projet_id", projetId),
       supabase.from("client_projets").select("profiles(id, full_name, email)").eq("projet_id", projetId),
+      getReleasesDuProjet(supabase, projetId),
     ]);
 
-  if (error || !projet) return null;
+  // Distinction volontaire : une vraie erreur Supabase (RLS, table
+  // manquante, etc.) n'est PAS la même chose qu'un projet qui n'existe
+  // juste pas. Avant, les deux cas étaient avalés dans un même `return
+  // null` -> 404 générique, ce qui rend un vrai bug indiscernable d'un ID
+  // invalide. On les distingue pour que l'appelant puisse afficher l'erreur
+  // réelle plutôt qu'un 404 qui ne dit rien.
+  if (error) {
+    return { ok: false as const, notFound: false as const, erreur: error.message };
+  }
+  if (!projet) {
+    return { ok: false as const, notFound: true as const, erreur: null };
+  }
 
   const tickets = (ticketsRows ?? []) as unknown as (TicketPourStats & {
     titre: string;
@@ -32,5 +45,15 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
     priorite: t.priorite as TicketPriorite,
   }));
 
-  return { projet, tickets, stats, clients, kanbanItems };
+  const releasesAvecProgression = calculerProgressionReleases(releases, tickets);
+
+  return {
+    ok: true as const,
+    projet,
+    tickets,
+    stats,
+    clients,
+    kanbanItems,
+    releasesAvecProgression,
+  };
 }

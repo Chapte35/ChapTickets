@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/lib/types";
 import { getAllTags } from "@/lib/queries/tags";
 import { StatusUpdateForm } from "./status-update-form";
+import { DateEcheanceForm } from "./date-echeance-form";
 import {
   ReopenRequestsPanel,
   type DemandeReouverture,
@@ -52,14 +54,14 @@ export default async function AdminTicketDetailPage({
     supabase
       .from("tickets")
       .select(
-        "id, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        "id, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
       )
       .eq("id", id)
       .single(),
     supabase
       .from("demandes_reouverture")
       .select(
-        "id, message, statut, created_at, profiles:profiles!demandes_reouverture_demande_par_fkey(email, full_name)"
+        "id, message, statut, created_at, nouveau_ticket_id, profiles:profiles!demandes_reouverture_demande_par_fkey(email, full_name)"
       )
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),
@@ -92,6 +94,21 @@ export default async function AdminTicketDetailPage({
   } | null;
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
+
+  // Requête séparée plutôt qu'une jointure auto-référencée dans le select
+  // principal (tickets -> tickets) : ce genre de self-join via PostgREST
+  // s'est révélé fragile et a fait planter la fiche ticket entière (404
+  // sur des tickets pourtant valides). Un ticket n'a de toute façon
+  // qu'exceptionnellement une origine, autant faire cette requête à part.
+  const ticketOrigine = ticket.ticket_origine_id
+    ? (
+        await supabase
+          .from("tickets")
+          .select("id, titre")
+          .eq("id", ticket.ticket_origine_id)
+          .single()
+      ).data
+    : null;
 
   const tagsActuels = (ticketTagsRows ?? [])
     .map((r) => r.tags as unknown as Tag | null)
@@ -132,6 +149,14 @@ export default async function AdminTicketDetailPage({
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {ticketOrigine && (
+            <Link
+              href={`/admin/tickets/${ticketOrigine.id}`}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-fit"
+            >
+              Fait suite à « {ticketOrigine.titre} » →
+            </Link>
+          )}
           {ticket.description && (
             <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
           )}
@@ -143,6 +168,8 @@ export default async function AdminTicketDetailPage({
           />
 
           <StatusUpdateForm ticketId={ticket.id} currentStatut={statut} />
+
+          <DateEcheanceForm ticketId={ticket.id} dateActuelle={ticket.date_prevue} />
 
           <ReopenRequestsPanel
             ticketId={ticket.id}
