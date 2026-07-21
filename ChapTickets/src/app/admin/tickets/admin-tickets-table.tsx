@@ -28,10 +28,11 @@ import {
   TICKET_STATUT_LABELS,
   TICKET_PRIORITE_LABELS,
   ticketStatutBadgeVariant,
-  ticketPrioriteBadgeVariant,
   type TicketStatut,
   type TicketPriorite,
 } from "@/lib/types";
+import { PrioriteBadge } from "@/components/priorite-badge";
+import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
 import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk } from "./actions";
 
 export type AdminTicketRow = {
@@ -274,18 +275,25 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
               </TableCell>
               <TableCell className="text-muted-foreground tabular-nums">#{t.numero}</TableCell>
               <TableCell>
-                <Link href={`/admin/tickets/${t.id}`} className="font-medium hover:underline underline-offset-2">
-                  {t.titre}
-                </Link>
+                <div className="flex items-center gap-1.5">
+                  <Link href={`/admin/tickets/${t.id}`} className="font-medium hover:underline underline-offset-2">
+                    {t.titre}
+                  </Link>
+                  <TicketPreviewPopover
+                    ticketId={t.id}
+                    titre={t.titre}
+                    statut={t.statut}
+                    priorite={t.priorite}
+                    description={t.description}
+                  />
+                </div>
               </TableCell>
               <TableCell className="text-muted-foreground">{t.projets?.nom ?? "—"}</TableCell>
               <TableCell className="text-muted-foreground">
                 {t.profiles?.full_name || t.profiles?.email || "—"}
               </TableCell>
               <TableCell>
-                <Badge variant={ticketPrioriteBadgeVariant(t.priorite)}>
-                  {TICKET_PRIORITE_LABELS[t.priorite]}
-                </Badge>
+                <PrioriteBadge priorite={t.priorite} />
               </TableCell>
               <TableCell>
                 <Badge variant={ticketStatutBadgeVariant(t.statut)}>

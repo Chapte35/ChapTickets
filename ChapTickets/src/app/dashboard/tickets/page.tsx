@@ -25,7 +25,7 @@ export default async function ClientTicketsPage({
 
   let query = supabase
     .from("tickets")
-    .select("id, numero, titre, statut, priorite, created_at, date_prevue, projets(nom)");
+    .select("id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom)");
 
   query =
     tri === "echeance"
@@ -62,6 +62,7 @@ export default async function ClientTicketsPage({
           tickets={
             (tickets ?? []).map((t) => ({
               ...t,
+              description: t.description ?? null,
               profiles: null,
             })) as unknown as TicketRow[]
           }

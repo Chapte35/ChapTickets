@@ -1,10 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TagChip } from "@/components/tag-badge";
+import { PrioriteBadge } from "@/components/priorite-badge";
 import {
-  TICKET_PRIORITE_LABELS,
   TICKET_STATUT_LABELS,
-  ticketPrioriteBadgeVariant,
   ticketStatutBadgeVariant,
   type TicketPriorite,
   type TicketStatut,
@@ -57,9 +56,7 @@ export function TicketPreviewCard({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <Badge variant={ticketPrioriteBadgeVariant(priorite)}>
-              {TICKET_PRIORITE_LABELS[priorite]}
-            </Badge>
+            <PrioriteBadge priorite={priorite} />
             {statut && (
               <Badge variant={ticketStatutBadgeVariant(statut)}>
                 {TICKET_STATUT_LABELS[statut]}

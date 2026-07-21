@@ -11,7 +11,7 @@ import { DayActionsDialog, type TicketAssignable } from "./day-actions-dialog";
 
 export type CalendrierEvenement = {
   date: string; // "YYYY-MM-DD"
-  type: "ticket" | "release" | "statut";
+  type: "ticket" | "release" | "statut" | "sprint_debut" | "sprint_fin";
   id: string;
   label: string;
   href: string;
@@ -173,7 +173,8 @@ export function MonthCalendar({
                         className={cn(
                           "truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight hover:opacity-80 shrink-0 transition-opacity",
                           e.type === "release" && "bg-chart-4/20 text-chart-4",
-                          e.type === "ticket" && "bg-primary/10 text-primary"
+                          e.type === "ticket" && "bg-primary/10 text-primary",
+                          (e.type === "sprint_debut" || e.type === "sprint_fin") && "bg-violet-500/15 text-violet-700 dark:text-violet-400",
                         )}
                         style={
                           e.type === "statut" && e.statut

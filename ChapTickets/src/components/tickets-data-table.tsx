@@ -36,10 +36,9 @@ import {
 } from "@/components/ui/empty";
 import {
   TICKET_STATUT_LABELS,
-  TICKET_PRIORITE_LABELS,
   ticketStatutBadgeVariant,
-  ticketPrioriteBadgeVariant,
 } from "@/lib/types";
+import { PrioriteBadge } from "@/components/priorite-badge";
 import type { TicketSummary } from "@/lib/queries/dashboard";
 import { initiales } from "@/lib/initiales";
 
@@ -123,7 +122,7 @@ const columns: ColumnDef<TicketSummary>[] = [
     header: ({ column }) => <SortableHeader label="Priorité" column={column} />,
     cell: ({ getValue }) => {
       const p = getValue<TicketSummary["priorite"]>();
-      return <Badge variant={ticketPrioriteBadgeVariant(p)}>{TICKET_PRIORITE_LABELS[p]}</Badge>;
+      return <PrioriteBadge priorite={p} />;
     },
   },
   {

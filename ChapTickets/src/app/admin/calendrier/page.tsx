@@ -7,7 +7,6 @@ import { TICKET_STATUT_LABELS, type TicketStatut } from "@/lib/types";
 import { ProjetFilter } from "@/components/calendar/projet-filter";
 import { createRelease } from "./actions";
 import { updateDateEcheance } from "../tickets/actions";
-
 export default async function CalendrierAdminPage({
   searchParams,
 }: {
@@ -63,6 +62,13 @@ export default async function CalendrierAdminPage({
     .order("titre");
   if (projetId) ticketsAssignablesQuery = ticketsAssignablesQuery.eq("projet_id", projetId);
 
+  let sprintsQuery = supabase
+    .from("sprints")
+    .select("id, nom, date_debut, date_fin, projet_id")
+    .not("date_debut", "is", null)
+    .not("date_fin", "is", null);
+  if (projetId) sprintsQuery = sprintsQuery.eq("projet_id", projetId);
+
   const [
     { data: tickets },
     { data: releases },
@@ -70,6 +76,7 @@ export default async function CalendrierAdminPage({
     { data: ticketsAssignablesRows },
     { data: historique },
     ticketsSansReleaseParProjet,
+    { data: sprints },
   ] = await Promise.all([
     ticketsQuery,
     releasesQuery,
@@ -77,6 +84,7 @@ export default async function CalendrierAdminPage({
     ticketsAssignablesQuery,
     historiqueQuery,
     getTicketsSansReleaseParProjet(supabase),
+    sprintsQuery,
   ]);
 
   const evenementsStatut = (historique ?? [])
@@ -114,6 +122,28 @@ export default async function CalendrierAdminPage({
       label: r.nom,
       href: `/admin/projets/${r.projet_id}/overview`,
     })),
+    // Sprints : affichés sur leur date_debut (et date_fin si définie)
+    ...(sprints ?? []).flatMap((s) => {
+      const evts: CalendrierEvenement[] = [
+        {
+          date: s.date_debut as string,
+          type: "sprint_debut" as const,
+          id: `${s.id}_debut`,
+          label: `🏁 ${s.nom} — début`,
+          href: `/admin/projets/${s.projet_id}/sprints`,
+        },
+      ];
+      if (s.date_fin) {
+        evts.push({
+          date: s.date_fin as string,
+          type: "sprint_fin" as const,
+          id: `${s.id}_fin`,
+          label: `🏁 ${s.nom} — fin`,
+          href: `/admin/projets/${s.projet_id}/sprints`,
+        });
+      }
+      return evts;
+    }),
     ...evenementsStatut,
   ];
 

@@ -10,15 +10,14 @@ import {
 } from "@/components/ui/card";
 import {
   TICKET_STATUT_LABELS,
-  TICKET_PRIORITE_LABELS,
   STATUTS_ELIGIBLES_REOUVERTURE,
   ticketStatutBadgeVariant,
-  ticketPrioriteBadgeVariant,
   type TicketStatut,
   type TicketPriorite,
   type Tag,
   tagsVisiblesPourProjet,
 } from "@/lib/types";
+import { PrioriteBadge } from "@/components/priorite-badge";
 import { getAllTags } from "@/lib/queries/tags";
 import { ReopenRequestButton } from "./reopen-request-button";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
@@ -199,9 +198,7 @@ export default async function ClientTicketDetailPage({
             <CardContent className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Priorité</span>
-                <Badge variant={ticketPrioriteBadgeVariant(priorite)} className="w-fit">
-                  {TICKET_PRIORITE_LABELS[priorite]}
-                </Badge>
+                <PrioriteBadge priorite={priorite} />
               </div>
 
               <div className="flex flex-col gap-1.5">

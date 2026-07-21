@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import {
   TICKET_STATUTS,
   TICKET_STATUT_LABELS,
-  TICKET_PRIORITE_LABELS,
-  ticketPrioriteBadgeVariant,
   type TicketStatut,
   type TicketPriorite,
 } from "@/lib/types";
+import { PrioriteBadge } from "@/components/priorite-badge";
 
 export type TicketKanbanItem = {
   id: string;
@@ -43,9 +41,7 @@ export function TicketKanbanReadonly({
                   className="flex flex-col gap-1.5 rounded-md border bg-card p-2 text-xs hover:shadow-sm transition-shadow"
                 >
                   <span className="font-medium leading-snug">{t.titre}</span>
-                  <Badge variant={ticketPrioriteBadgeVariant(t.priorite)} className="w-fit text-[10px]">
-                    {TICKET_PRIORITE_LABELS[t.priorite]}
-                  </Badge>
+                  <PrioriteBadge priorite={t.priorite} />
                 </Link>
               ))}
               {colonne.length === 0 && (

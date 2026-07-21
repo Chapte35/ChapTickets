@@ -63,6 +63,20 @@ export const TICKET_PRIORITE_LABELS: Record<TicketPriorite, string> = {
 };
 
 /**
+ * Classes Tailwind littérales pour les badges de priorité — même contrainte
+ * JIT que TAG_COLOR_CLASSES : pas de construction dynamique, les noms
+ * complets doivent apparaître dans le source. Inspiré de la couleur rouge
+ * d'urgente déjà présente (destructive), étendue aux autres niveaux avec
+ * une progression cohérente gris → bleu → orange → rouge.
+ */
+export const TICKET_PRIORITE_COLOR_CLASSES: Record<TicketPriorite, string> = {
+  basse: "bg-gray-500/15 text-gray-700 dark:text-gray-400 border-gray-500/30",
+  normale: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  haute: "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30",
+  urgente: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
+};
+
+/**
  * Options de tri des listes de tickets (admin + client). Pas une contrainte
  * DB (contrairement aux autres consts de ce fichier) — juste un contrat
  * partagé entre TicketFiltersBar (construit le param `tri`) et les pages

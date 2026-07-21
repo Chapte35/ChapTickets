@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import type { ProjetStatut } from "@/lib/types";
 import type { ClientOption } from "@/lib/queries/tickets";
 import { ProjetEditForm } from "./projet-edit-form";
@@ -15,6 +15,7 @@ import { ProjetStatutForm } from "./projet-statut-form";
 import { ClientsRattachesPanel } from "./clients-rattaches-panel";
 import { DeleteProjetButton } from "./delete-projet-button";
 import { BackButton } from "@/components/back-button";
+import { ProjetTabsNav } from "@/components/sprints/projet-tabs-nav";
 
 export default async function ProjetDetailPage({
   params,
@@ -52,9 +53,7 @@ export default async function ProjetDetailPage({
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
       <BackButton />
-      <Button asChild variant="outline" size="sm" className="self-start">
-        <Link href={`/admin/projets/${id}/overview`}>Voir l&apos;overview →</Link>
-      </Button>
+      <ProjetTabsNav projetId={id} />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">

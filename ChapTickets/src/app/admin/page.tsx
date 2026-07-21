@@ -24,17 +24,26 @@ import { FolderKanban } from "lucide-react";
 import { TicketsDataTable } from "@/components/tickets-data-table";
 import { getAdminDashboardData } from "@/lib/queries/dashboard";
 import { buildTicketStats, type TicketPourStats } from "@/lib/stats/ticket-stats";
+import { getResolutionParProjet } from "@/lib/queries/stats-resolution";
 import { KpiCard } from "@/components/charts/kpi-card";
 import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
 import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
 import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
+import { ChartResolutionProjets } from "@/components/dashboard/chart-resolution-projets";
 
 export default async function AdminHomePage() {
   const supabase = await createClient();
 
-  const [{ urgents, recents, projetsEnCours }, { data: tousLesTickets }] = await Promise.all([
+  const [
+    { urgents, recents, projetsEnCours },
+    { data: tousLesTickets },
+    resolutionParProjet,
+    { data: tousLesProjets },
+  ] = await Promise.all([
     getAdminDashboardData(supabase),
     supabase.from("tickets").select("id, statut, priorite, created_at, updated_at"),
+    getResolutionParProjet(supabase, "semaine"),
+    supabase.from("projets").select("id, nom").order("nom"),
   ]);
 
   const stats = buildTicketStats((tousLesTickets ?? []) as unknown as TicketPourStats[], 14);
@@ -60,7 +69,7 @@ export default async function AdminHomePage() {
         />
       </div>
 
-      {/* Charts : 3 côte à côte sur grand écran, l'activité prend le double de large (plus lisible pour une courbe) */}
+      {/* Charts : grille 4 colonnes sur xl */}
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="xl:col-span-1">
           <CardHeader>
@@ -84,6 +93,18 @@ export default async function AdminHomePage() {
           </CardHeader>
           <CardContent>
             <TicketsOverTimeChart data={stats.overTime} />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2 xl:col-span-4">
+          <CardHeader>
+            <CardTitle className="text-sm">Résolution par projet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartResolutionProjets
+              donneesInitiales={resolutionParProjet}
+              projets={(tousLesProjets ?? []) as { id: string; nom: string }[]}
+              periodeInitiale="semaine"
+            />
           </CardContent>
         </Card>
       </div>
