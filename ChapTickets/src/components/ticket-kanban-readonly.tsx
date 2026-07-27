@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   TICKET_STATUTS,
   TICKET_STATUT_LABELS,
+  formatRefTicket,
   type TicketStatut,
   type TicketPriorite,
 } from "@/lib/types";
@@ -12,18 +13,28 @@ export type TicketKanbanItem = {
   titre: string;
   statut: TicketStatut;
   priorite: TicketPriorite;
+  numero?: number;
+  code_court?: string | null;
 };
 
 export function TicketKanbanReadonly({
   tickets,
   basePath,
+  /**
+   * Statuts à masquer. Par défaut : ["ferme"] — les tickets fermés
+   * encombrent la vue sans valeur ajoutée (feedback client FEAT0.1).
+   */
+  hideStatuts = ["ferme"],
 }: {
   tickets: TicketKanbanItem[];
   basePath: string;
+  hideStatuts?: TicketStatut[];
 }) {
+  const statutsVisibles = TICKET_STATUTS.filter((s) => !hideStatuts.includes(s));
+
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {TICKET_STATUTS.map((statut) => {
+      {statutsVisibles.map((statut) => {
         const colonne = tickets.filter((t) => t.statut === statut);
         return (
           <div key={statut} className="flex flex-col gap-2 min-w-[220px] w-[220px] shrink-0">
@@ -40,6 +51,11 @@ export function TicketKanbanReadonly({
                   href={`${basePath}/${t.id}`}
                   className="flex flex-col gap-1.5 rounded-md border bg-card p-2 text-xs hover:shadow-sm transition-shadow"
                 >
+                  {t.numero != null && (
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {formatRefTicket(t.numero, t.code_court)}
+                    </span>
+                  )}
                   <span className="font-medium leading-snug">{t.titre}</span>
                   <PrioriteBadge priorite={t.priorite} />
                 </Link>

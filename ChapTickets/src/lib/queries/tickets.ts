@@ -4,8 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Un projet auquel un client est rattaché (relation client_projets).
  * Utilisé pour peupler les selects "projet" côté client (création de
  * ticket) et côté admin (formulaire de création + filtres).
+ * code_court : préfixe des références ticket (ex : "CHAP" → "CHAP#32").
  */
-export type ProjetOption = { id: string; nom: string };
+export type ProjetOption = { id: string; nom: string; code_court: string | null };
 
 export type ClientOption = {
   id: string;
@@ -20,7 +21,7 @@ export async function getProjetsDuClient(
 ): Promise<ProjetOption[]> {
   const { data, error } = await supabase
     .from("client_projets")
-    .select("projets(id, nom)")
+    .select("projets(id, nom, code_court)")
     .eq("client_id", clientId);
 
   if (error || !data) return [];
@@ -37,11 +38,11 @@ export async function getTousLesProjets(
 ): Promise<ProjetOption[]> {
   const { data, error } = await supabase
     .from("projets")
-    .select("id, nom")
+    .select("id, nom, code_court")
     .order("nom");
 
   if (error || !data) return [];
-  return data;
+  return data as unknown as ProjetOption[];
 }
 
 /** Clients rattachés à un projet donné (pour le select "client" dépendant du projet, côté admin). */
@@ -79,4 +80,20 @@ export async function getClientsParProjet(
     map[row.projet_id].push(client);
   }
   return map;
+}
+
+/**
+ * Tous les profils (admin + clients) pour le select "assigné à" d'un ticket.
+ * L'admin voit tout le monde, RLS filtre côté Supabase.
+ */
+export async function getTousLesProfils(
+  supabase: SupabaseClient
+): Promise<ClientOption[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name")
+    .order("full_name");
+
+  if (error || !data) return [];
+  return data as unknown as ClientOption[];
 }

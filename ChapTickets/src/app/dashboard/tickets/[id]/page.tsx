@@ -12,6 +12,7 @@ import {
   TICKET_STATUT_LABELS,
   STATUTS_ELIGIBLES_REOUVERTURE,
   ticketStatutBadgeVariant,
+  formatRefTicket,
   type TicketStatut,
   type TicketPriorite,
   type Tag,
@@ -54,7 +55,7 @@ export default async function ClientTicketDetailPage({
     supabase
       .from("tickets")
       .select(
-        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, projets(nom)"
+        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email)"
       )
       .eq("id", id)
       .single(),
@@ -86,9 +87,11 @@ export default async function ClientTicketDetailPage({
 
   if (error || !ticket) notFound();
 
-  const projet = ticket.projets as unknown as { nom: string } | null;
+  const projet = ticket.projets as unknown as { nom: string; code_court: string | null } | null;
+  const assigneProfile = (ticket as unknown as { assigne_profile: { full_name: string | null; email: string | null } | null }).assigne_profile;
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
+  const refAffichee = formatRefTicket(ticket.numero, projet?.code_court);
   const derniereDemande = demandes?.[0] ?? null;
   // Une fois une demande acceptée, ce ticket est remplacé par un nouveau —
   // pas la peine (et pas cohérent) de permettre une nouvelle demande dessus.
@@ -158,6 +161,7 @@ export default async function ClientTicketDetailPage({
             tags={tagsActuels}
             statut={statut}
             numero={ticket.numero}
+            refAffichee={refAffichee}
           />
 
           <Card>
@@ -207,6 +211,15 @@ export default async function ClientTicketDetailPage({
                   {TICKET_STATUT_LABELS[statut]}
                 </Badge>
               </div>
+
+              {assigneProfile && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-muted-foreground">Assigné à</span>
+                  <span className="text-sm">
+                    {assigneProfile.full_name || assigneProfile.email || "—"}
+                  </span>
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Tags</span>

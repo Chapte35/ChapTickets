@@ -12,12 +12,9 @@ import {
 
 /**
  * Rendu de la fiche telle qu'elle apparaîtra une fois le ticket créé — même
- * composant, littéralement, que la fiche réelle (admin ET client) : cf.
- * ticket "Aperçu du ticket non exploité" (sprint 12), le rendu montré à la
- * création n'était jamais réutilisé ailleurs, donc rien ne garantissait
- * qu'il corresponde vraiment à la fiche finale. `statut`/`numero` absents
- * (undefined) = mode aperçu à la création (pas encore de statut ni de
- * numéro attribués) ; fournis = mode réel, monté depuis la fiche.
+ * composant, littéralement, que la fiche réelle (admin ET client).
+ * `refAffichee` : référence formatée avec code court si dispo ("CHAP#32"),
+ * sinon "#32". Absent en mode aperçu création (pas encore de numéro).
  */
 export function TicketPreviewCard({
   titre,
@@ -29,6 +26,7 @@ export function TicketPreviewCard({
   tags,
   statut,
   numero,
+  refAffichee,
 }: {
   titre: string;
   description: string;
@@ -39,15 +37,19 @@ export function TicketPreviewCard({
   tags: Tag[];
   statut?: TicketStatut;
   numero?: number;
+  /** Référence pré-formatée (ex : "CHAP#32"). Si absent, on fallback sur "#numero". */
+  refAffichee?: string;
 }) {
+  const refLabel = refAffichee ?? (numero != null ? `#${numero}` : null);
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-semibold leading-snug">
-              {numero != null && (
-                <span className="text-muted-foreground font-normal">#{numero} </span>
+              {refLabel && (
+                <span className="text-muted-foreground font-normal">{refLabel} </span>
               )}
               {titre || <span className="text-muted-foreground">Titre du ticket…</span>}
             </p>

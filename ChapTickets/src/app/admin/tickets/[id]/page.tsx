@@ -12,11 +12,14 @@ import {
   type TicketStatut,
   type Tag,
   tagsVisiblesPourProjet,
+  formatRefTicket,
 } from "@/lib/types";
 import { getAllTags } from "@/lib/queries/tags";
+import { getTousLesProfils } from "@/lib/queries/tickets";
 import { StatusUpdateForm } from "./status-update-form";
 import { PriorityUpdateForm } from "./priority-update-form";
 import { DateEcheanceForm } from "./date-echeance-form";
+import { AssigneAForm } from "./assigne-a-form";
 import {
   ReopenRequestsPanel,
   type DemandeReouverture,
@@ -51,11 +54,12 @@ export default async function AdminTicketDetailPage({
     tousLesTags,
     { data: checklist },
     { data: attachmentsRows },
+    profils,
   ] = await Promise.all([
     supabase
       .from("tickets")
       .select(
-        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
       )
       .eq("id", id)
       .single(),
@@ -84,17 +88,21 @@ export default async function AdminTicketDetailPage({
       .select("id, storage_path, nom_fichier, taille_octets, created_at")
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),
+    getTousLesProfils(supabase),
   ]);
 
   if (error || !ticket) notFound();
 
-  const projet = ticket.projets as unknown as { nom: string } | null;
+  const projet = ticket.projets as unknown as { nom: string; code_court: string | null } | null;
   const client = ticket.profiles as unknown as {
     email: string | null;
     full_name: string | null;
   } | null;
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
+  const assigneAId = (ticket as unknown as { assigne_a: string | null }).assigne_a;
+
+  const refAffichee = formatRefTicket(ticket.numero, projet?.code_court);
 
   // Requête séparée plutôt qu'une jointure auto-référencée dans le select
   // principal (tickets -> tickets) : ce genre de self-join via PostgREST
@@ -137,11 +145,6 @@ export default async function AdminTicketDetailPage({
       <MarkTicketRead ticketId={ticket.id} />
       <BackButton />
 
-      {/* Layout à 2 colonnes (façon Linear/GitHub Issues) : le contenu
-          narratif (description, checklist, PJ, messages) prend toute la
-          largeur disponible à gauche, les métadonnées éditables vivent
-          dans une sidebar fixe à droite. Sur mobile, la sidebar repasse
-          simplement sous le contenu principal (grid-cols-1). */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-6 min-w-0">
           <RefClientDisplay ticketId={ticket.id} refClient={ticket.ref_client} />
@@ -165,6 +168,7 @@ export default async function AdminTicketDetailPage({
             tags={tagsActuels}
             statut={statut}
             numero={ticket.numero}
+            refAffichee={refAffichee}
           />
 
           <Card>
@@ -207,6 +211,15 @@ export default async function AdminTicketDetailPage({
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Statut</span>
                 <StatusUpdateForm ticketId={ticket.id} currentStatut={statut} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Assigné à</span>
+                <AssigneAForm
+                  ticketId={ticket.id}
+                  assigneAId={assigneAId}
+                  profils={profils}
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

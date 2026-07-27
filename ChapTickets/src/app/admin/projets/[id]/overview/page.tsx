@@ -131,7 +131,7 @@ export default async function ProjetOverviewAdminPage({
           <CardTitle className="text-sm">Releases</CardTitle>
         </CardHeader>
         <CardContent>
-          <ReleaseProgressList releases={releasesAvecProgression} />
+          <ReleaseProgressList releases={releasesAvecProgression} projetId={id} />
         </CardContent>
       </Card>
     </div>

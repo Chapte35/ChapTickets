@@ -280,3 +280,13 @@ export type Release = {
   date: string;
   description: string | null;
 };
+
+/**
+ * Formate la référence affichée d'un ticket : "CHAP#32" si le projet a un
+ * code court, sinon "#32". Centralisé ici pour cohérence dans toutes les
+ * listes, fiches, et previews.
+ */
+export function formatRefTicket(numero: number, codeCourt: string | null | undefined): string {
+  if (codeCourt) return `${codeCourt}#${numero}`;
+  return `#${numero}`;
+}

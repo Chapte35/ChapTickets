@@ -28,6 +28,7 @@ import {
   TICKET_STATUT_LABELS,
   TICKET_PRIORITE_LABELS,
   ticketStatutBadgeVariant,
+  formatRefTicket,
   type TicketStatut,
   type TicketPriorite,
 } from "@/lib/types";
@@ -43,7 +44,7 @@ export type AdminTicketRow = {
   statut: TicketStatut;
   priorite: TicketPriorite;
   created_at: string;
-  projets: { nom: string } | null;
+  projets: { nom: string; code_court?: string | null } | null;
   profiles: { email: string | null; full_name: string | null } | null;
 };
 
@@ -273,7 +274,9 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                   aria-label={`Sélectionner ${t.titre}`}
                 />
               </TableCell>
-              <TableCell className="text-muted-foreground tabular-nums">#{t.numero}</TableCell>
+              <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
+                {formatRefTicket(t.numero, t.projets?.code_court)}
+              </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5">
                   <Link href={`/admin/tickets/${t.id}`} className="font-medium hover:underline underline-offset-2">

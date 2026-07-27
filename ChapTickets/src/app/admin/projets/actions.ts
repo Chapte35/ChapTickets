@@ -16,10 +16,16 @@ export async function createProjet(
 
   const nom = formData.get("nom");
   const description = formData.get("description");
+  const codeCourt = formData.get("code_court");
 
   if (typeof nom !== "string" || !nom.trim()) {
     return { error: "Nom requis." };
   }
+
+  const codeCourtNormalise =
+    typeof codeCourt === "string" && codeCourt.trim()
+      ? codeCourt.trim().toUpperCase().slice(0, 10)
+      : null;
 
   const { data: projet, error } = await supabase
     .from("projets")
@@ -27,6 +33,7 @@ export async function createProjet(
       nom: nom.trim(),
       description: typeof description === "string" ? description.trim() : null,
       statut: "a_demarrer",
+      code_court: codeCourtNormalise,
     })
     .select("id")
     .single();
@@ -49,6 +56,7 @@ export async function updateProjet(
   const projetId = formData.get("projet_id");
   const nom = formData.get("nom");
   const description = formData.get("description");
+  const codeCourt = formData.get("code_court");
 
   if (typeof projetId !== "string" || !projetId) {
     return { error: "Projet invalide." };
@@ -57,11 +65,17 @@ export async function updateProjet(
     return { error: "Nom requis." };
   }
 
+  const codeCourtNormalise =
+    typeof codeCourt === "string" && codeCourt.trim()
+      ? codeCourt.trim().toUpperCase().slice(0, 10)
+      : null;
+
   const { error } = await supabase
     .from("projets")
     .update({
       nom: nom.trim(),
       description: typeof description === "string" ? description.trim() : null,
+      code_court: codeCourtNormalise,
     })
     .eq("id", projetId);
 

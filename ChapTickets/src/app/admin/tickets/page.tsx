@@ -21,7 +21,7 @@ export default async function AdminTicketsPage({
   let query = supabase
     .from("tickets")
     .select(
-      "id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+      "id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
     );
 
   // "échéance" met les tickets sans date_prevue à la fin plutôt qu'au

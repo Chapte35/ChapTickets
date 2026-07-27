@@ -25,7 +25,7 @@ export default async function ClientTicketsPage({
 
   let query = supabase
     .from("tickets")
-    .select("id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom)");
+    .select("id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court)");
 
   query =
     tri === "echeance"

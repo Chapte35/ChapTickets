@@ -27,7 +27,7 @@ export default async function ProjetDetailPage({
 
   const [{ data: projet, error }, { data: rattaches }, { data: tousLesClients }] =
     await Promise.all([
-      supabase.from("projets").select("id, nom, description, statut").eq("id", id).single(),
+      supabase.from("projets").select("id, nom, description, statut, code_court").eq("id", id).single(),
       supabase
         .from("client_projets")
         .select("profiles(id, email, full_name)")
@@ -65,6 +65,7 @@ export default async function ProjetDetailPage({
             projetId={projet.id}
             nom={projet.nom}
             description={projet.description}
+            codeCourt={(projet as unknown as { code_court: string | null }).code_court}
           />
           <div className="border-t pt-4">
             <ProjetStatutForm

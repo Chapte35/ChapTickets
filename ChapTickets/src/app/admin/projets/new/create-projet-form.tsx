@@ -19,6 +19,19 @@ export function CreateProjetForm() {
         <Input id="nom" name="nom" required />
       </div>
       <div className="flex flex-col gap-2">
+        <Label htmlFor="code_court">
+          Code court{" "}
+          <span className="text-muted-foreground font-normal text-xs">(ex : CHAP → CHAP#32)</span>
+        </Label>
+        <Input
+          id="code_court"
+          name="code_court"
+          maxLength={10}
+          placeholder="CHAP"
+          className="uppercase"
+        />
+      </div>
+      <div className="flex flex-col gap-2">
         <Label htmlFor="description">Description</Label>
         <Textarea id="description" name="description" rows={4} />
       </div>

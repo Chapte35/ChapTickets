@@ -14,10 +14,12 @@ export function ProjetEditForm({
   projetId,
   nom,
   description,
+  codeCourt,
 }: {
   projetId: string;
   nom: string;
   description: string | null;
+  codeCourt: string | null;
 }) {
   const [state, formAction, isPending] = useActionState(updateProjet, initialState);
 
@@ -29,6 +31,20 @@ export function ProjetEditForm({
       <div className="flex flex-col gap-2">
         <Label htmlFor="nom">Nom</Label>
         <Input id="nom" name="nom" defaultValue={nom} required />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="code_court">
+          Code court{" "}
+          <span className="text-muted-foreground font-normal text-xs">(ex : CHAP → CHAP#32)</span>
+        </Label>
+        <Input
+          id="code_court"
+          name="code_court"
+          defaultValue={codeCourt ?? ""}
+          maxLength={10}
+          placeholder="CHAP"
+          className="uppercase"
+        />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">Description</Label>
