@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   Card,
@@ -8,11 +7,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { KpiCard } from "@/components/charts/kpi-card";
+import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
+import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
+import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
+import { TicketKanbanReadonly } from "@/components/ticket-kanban-readonly";
+import { ReleaseProgressList } from "@/components/release-progress-list";
 import { TicketList } from "@/components/ticket-list";
+import { getProjetOverviewData } from "@/lib/queries/overview";
 import { getClientDashboardData } from "@/lib/queries/dashboard";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
-import { TICKET_STATUT_LABELS } from "@/lib/types";
+import { TICKET_STATUT_LABELS, PROJET_STATUT_LABELS, type ProjetStatut, type TicketStatut } from "@/lib/types";
 import { DashboardProjetSync } from "@/components/dashboard-projet-sync";
+import { notFound } from "next/navigation";
 
 export default async function ClientDashboardPage({
   searchParams,
@@ -31,59 +38,181 @@ export default async function ClientDashboardPage({
 
   const projets = await getProjetsDuClient(supabase, user.id);
 
-  // 1 projet et pas de filtre sidebar actif → redirect vers l'overview projet
-  // (comportement existant, préservé)
-  if (projets.length === 1 && !projetId) {
-    redirect(`/dashboard/projets/${projets[0].id}`);
-  }
+  // ── CAS 1 : projet sélectionné via sidebar ──────────────────────────────
+  // On affiche l'overview complet de ce projet (KPIs, charts, kanban, releases)
+  // sans redirect — l'utilisateur reste sur /dashboard.
+  if (projetId) {
+    const result = await getProjetOverviewData(supabase, projetId);
+    if (!result.ok) {
+      if (result.notFound) notFound();
+      return (
+        <Card className="max-w-lg">
+          <CardHeader>
+            <CardTitle className="text-destructive">Erreur de chargement</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{result.erreur}</p>
+          </CardContent>
+        </Card>
+      );
+    }
 
-  // 2+ projets sans projet sélectionné → sélecteur de cartes
-  if (projets.length > 1 && !projetId) {
+    const { projet, stats, kanbanItems, releasesAvecProgression } = result;
+
     return (
-      <>
+      <div className="flex flex-col gap-4">
         <DashboardProjetSync projets={projets} />
-        <div className="flex flex-col gap-4">
+
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold">Tes projets</h1>
+            <h1 className="text-lg font-semibold">{projet.nom}</h1>
             <p className="text-sm text-muted-foreground">
-              Choisis un projet pour voir son suivi, ou sélectionne-en un dans la sidebar.
+              {PROJET_STATUT_LABELS[projet.statut as ProjetStatut]}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {projets.map((p) => (
-              <Link
-                key={p.id}
-                href={`/dashboard/projets/${p.id}`}
-                className="flex items-center justify-between rounded-lg border bg-card p-4 hover:shadow-sm hover:border-foreground/20 transition-all"
-              >
-                <span className="text-sm font-medium">{p.nom}</span>
-                <span className="text-muted-foreground">→</span>
-              </Link>
-            ))}
-          </div>
+          <Link
+            href={`/dashboard/messagerie/${projet.id}`}
+            className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Discuter du projet →
+          </Link>
         </div>
-      </>
+
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <KpiCard label="Tickets ouverts" valeur={stats.ouvertsNonResolus} />
+          <KpiCard
+            label="Urgents non résolus"
+            valeur={stats.urgentsNonResolus}
+            accent={stats.urgentsNonResolus > 0}
+          />
+          <KpiCard label="Résolus (7 jours)" valeur={stats.resolusCetteSemaine} />
+          <KpiCard
+            label="Résolution moyenne"
+            valeur={
+              stats.dureeMoyenneResolutionJours !== null
+                ? `${stats.dureeMoyenneResolutionJours.toFixed(1)} j`
+                : "—"
+            }
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          <Card className="xl:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-sm">Répartition par statut</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketStatusDonut repartition={stats.ticketsParStatut} />
+            </CardContent>
+          </Card>
+          <Card className="xl:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-sm">Répartition par priorité</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PriorityBarChart repartition={stats.ticketsParPriorite} />
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-sm">Activité — 14 derniers jours</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketsOverTimeChart data={stats.overTime} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Tickets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TicketKanbanReadonly tickets={kanbanItems} basePath="/dashboard/tickets" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Releases</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReleaseProgressList releases={releasesAvecProgression} />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  // Projet sélectionné (via sidebar) OU 0 projet → vue générique filtrée
-  const { recents, nonLus } = await getClientDashboardData(supabase, user.id, projetId);
+  // ── CAS 2 : 2+ projets, aucun sélectionné → vue d'ensemble multi-projets ─
+  if (projets.length > 1) {
+    // Charger les tickets de tous les projets du client pour avoir des KPIs par projet
+    const { data: tousLesTickets } = await supabase
+      .from("tickets")
+      .select("id, statut, priorite, projet_id");
 
-  const projetActif = projetId
-    ? projets.find((p) => p.id === projetId) ?? null
-    : null;
+    const ticketsParProjet = new Map<string, { ouverts: number; urgents: number }>();
+    for (const t of tousLesTickets ?? []) {
+      const existing = ticketsParProjet.get(t.projet_id) ?? { ouverts: 0, urgents: 0 };
+      const estOuvert = ["ouvert", "en_cours", "en_attente_client"].includes(t.statut as TicketStatut);
+      if (estOuvert) existing.ouverts += 1;
+      if (estOuvert && t.priorite === "urgente") existing.urgents += 1;
+      ticketsParProjet.set(t.projet_id, existing);
+    }
+
+    return (
+      <div className="flex flex-col gap-4">
+        <DashboardProjetSync projets={projets} />
+        <div>
+          <h1 className="text-lg font-semibold">Mes projets</h1>
+          <p className="text-sm text-muted-foreground">
+            Sélectionne un projet dans la sidebar ou clique sur une carte pour voir son détail.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {projets.map((p) => {
+            const kpis = ticketsParProjet.get(p.id) ?? { ouverts: 0, urgents: 0 };
+            return (
+              <Link
+                key={p.id}
+                href={`/dashboard/projets/${p.id}`}
+                className="flex flex-col gap-3 rounded-lg border bg-card p-4 hover:shadow-sm hover:border-foreground/20 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{p.nom}</span>
+                  <span className="text-muted-foreground text-xs">→</span>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {kpis.ouverts} ouvert{kpis.ouverts !== 1 ? "s" : ""}
+                  </Badge>
+                  {kpis.urgents > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {kpis.urgents} urgent{kpis.urgents !== 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── CAS 3 : 1 projet, pas de sidebar actif → vue générique filtrée ───────
+  // (0 projet = même vue sans filtre)
+  const projetUnique = projets[0] ?? null;
+  const { recents, nonLus } = await getClientDashboardData(
+    supabase,
+    user.id,
+    projetUnique?.id
+  );
 
   return (
     <>
       <DashboardProjetSync projets={projets} />
       <div className="grid gap-4 xl:grid-cols-2">
-        {projetActif && (
-          <p className="xl:col-span-2 text-xs text-muted-foreground">
-            Filtré sur le projet{" "}
-            <span className="font-medium text-foreground">{projetActif.nom}</span>
-          </p>
-        )}
-
         <Card>
           <CardHeader>
             <CardTitle>Messages non lus</CardTitle>

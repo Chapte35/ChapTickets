@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
-import { TicketList, type TicketRow } from "@/components/ticket-list";
+import { ClientTicketsTable, type ClientTicketRow } from "./client-tickets-table";
 import { Button } from "@/components/ui/button";
 import { TICKET_TRIS, type TicketTri } from "@/lib/types";
 
@@ -17,7 +17,7 @@ export default async function ClientTicketsPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null; // le layout redirige déjà, filet de sécurité
+  if (!user) return null;
 
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
@@ -25,7 +25,7 @@ export default async function ClientTicketsPage({
 
   let query = supabase
     .from("tickets")
-    .select("id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court)");
+    .select("id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court)");
 
   query =
     tri === "echeance"
@@ -58,15 +58,8 @@ export default async function ClientTicketsPage({
         </p>
       )}
       {!error && (
-        <TicketList
-          tickets={
-            (tickets ?? []).map((t) => ({
-              ...t,
-              description: t.description ?? null,
-              profiles: null,
-            })) as unknown as TicketRow[]
-          }
-          basePath="/dashboard/tickets"
+        <ClientTicketsTable
+          tickets={(tickets ?? []) as unknown as ClientTicketRow[]}
         />
       )}
     </div>
