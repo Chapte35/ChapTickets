@@ -30,8 +30,17 @@ import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
 import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
 import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
 import { ChartResolutionProjets } from "@/components/dashboard/chart-resolution-projets";
+import { DashboardProjetSync } from "@/components/dashboard-projet-sync";
+import { getTousLesProjets } from "@/lib/queries/tickets";
 
-export default async function AdminHomePage() {
+export default async function AdminHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
+  const params = await searchParams;
+  const projetId = params.projet ?? undefined;
+
   const supabase = await createClient();
 
   const [
@@ -39,18 +48,39 @@ export default async function AdminHomePage() {
     { data: tousLesTickets },
     resolutionParProjet,
     { data: tousLesProjets },
+    projets,
   ] = await Promise.all([
-    getAdminDashboardData(supabase),
-    supabase.from("tickets").select("id, statut, priorite, created_at, updated_at"),
-    getResolutionParProjet(supabase, "semaine"),
+    getAdminDashboardData(supabase, projetId),
+    projetId
+      ? supabase
+          .from("tickets")
+          .select("id, statut, priorite, created_at, updated_at")
+          .eq("projet_id", projetId)
+      : supabase
+          .from("tickets")
+          .select("id, statut, priorite, created_at, updated_at"),
+    getResolutionParProjet(supabase, "semaine", projetId),
     supabase.from("projets").select("id, nom").order("nom"),
+    getTousLesProjets(supabase),
   ]);
 
   const stats = buildTicketStats((tousLesTickets ?? []) as unknown as TicketPourStats[], 14);
 
+  const projetActif = projetId
+    ? projets.find((p) => p.id === projetId) ?? null
+    : null;
+
   return (
     <div className="flex flex-col gap-4">
-      {/* KPIs : 4 colonnes dès le petit écran (2x2), pleine largeur dès xl (1x4) */}
+      <DashboardProjetSync projets={projets} />
+
+      {projetActif && (
+        <p className="text-xs text-muted-foreground">
+          Filtré sur le projet <span className="font-medium text-foreground">{projetActif.nom}</span>
+        </p>
+      )}
+
+      {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard label="Tickets ouverts" valeur={stats.ouvertsNonResolus} />
         <KpiCard
@@ -69,7 +99,7 @@ export default async function AdminHomePage() {
         />
       </div>
 
-      {/* Charts : grille 4 colonnes sur xl */}
+      {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="xl:col-span-1">
           <CardHeader>
@@ -109,7 +139,7 @@ export default async function AdminHomePage() {
         </Card>
       </div>
 
-      {/* Table de tickets (onglets Urgences/Récents) + projets en cours à côté */}
+      {/* Table tickets + projets en cours */}
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <Tabs defaultValue="urgences">

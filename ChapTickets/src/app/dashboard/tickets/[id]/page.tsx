@@ -25,7 +25,7 @@ import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
-import { TicketPreviewCard } from "@/components/ticket-preview-card";
+import { TicketDetailEditableClient } from "./ticket-detail-editable-client";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
@@ -151,16 +151,15 @@ export default async function ClientTicketDetailPage({
             </Link>
           )}
 
-          <TicketPreviewCard
+          <TicketDetailEditableClient
+            ticketId={ticket.id}
             titre={ticket.titre}
             description={ticket.description ?? ""}
             priorite={priorite}
+            statut={statut}
             projetNom={projet?.nom ?? null}
-            clientNom={null}
             dateEcheance={ticket.date_prevue}
             tags={tagsActuels}
-            statut={statut}
-            numero={ticket.numero}
             refAffichee={refAffichee}
           />
 

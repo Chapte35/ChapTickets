@@ -29,6 +29,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ProjetSelectorSidebar } from "@/components/projet-selector-sidebar";
+import type { ProjetOption } from "@/lib/queries/tickets";
 
 const COOKIE_NAME = "sidebar_collapsed";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 an
@@ -110,6 +112,7 @@ export function AppSidebar({
   logoutAction,
   footer,
   basePath,
+  projets = [],
 }: {
   title: string;
   items: SidebarItem[];
@@ -119,6 +122,8 @@ export function AppSidebar({
   footer?: ReactNode;
   /** Pour la recherche globale (Cmd+K) : construit les liens de résultat. */
   basePath: "/admin" | "/dashboard";
+  /** Projets accessibles par l'utilisateur courant — alimente le sélecteur de projet. */
+  projets?: ProjetOption[];
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const pathname = usePathname();
@@ -157,6 +162,12 @@ export function AppSidebar({
       </div>
 
       {footer && !collapsed && <div className="px-3 pb-2">{footer}</div>}
+
+      <ProjetSelectorSidebar
+        projets={projets}
+        collapsed={collapsed}
+        basePath={basePath}
+      />
 
       <div className="px-2 pb-2">
         {collapsed ? (

@@ -107,6 +107,57 @@ export async function demanderReouverture(
   return { error: null };
 }
 
+export async function updateTicketTitreClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const ticketId = formData.get("ticket_id");
+  const valeur = formData.get("valeur");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+  if (typeof valeur !== "string" || !valeur.trim()) return { error: "Le titre ne peut pas être vide." };
+
+  // La RLS client ne permet de modifier que les tickets dont il est client_id
+  const { error } = await supabase
+    .from("tickets")
+    .update({ titre: valeur.trim(), updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
+  revalidatePath("/dashboard/tickets");
+  return { error: null };
+}
+
+export async function updateTicketDescriptionClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const ticketId = formData.get("ticket_id");
+  const valeur = formData.get("valeur");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+  const description = typeof valeur === "string" ? valeur.trim() || null : null;
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ description, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
+  revalidatePath("/dashboard/tickets");
+  return { error: null };
+}
+
 export async function postMessageClient(
   _prevState: FormState,
   formData: FormData

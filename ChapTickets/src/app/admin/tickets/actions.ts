@@ -382,6 +382,57 @@ export async function deleteTicket(ticketId: string): Promise<{ error: string | 
   return { error: null };
 }
 
+export async function updateTicketTitre(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const valeur = formData.get("valeur");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+  if (typeof valeur !== "string" || !valeur.trim()) return { error: "Le titre ne peut pas être vide." };
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ titre: valeur.trim(), updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/tickets");
+  return { error: null };
+}
+
+export async function updateTicketDescription(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const valeur = formData.get("valeur");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+  // Description nullable : une chaîne vide = null en base
+  const description = typeof valeur === "string" ? valeur.trim() || null : null;
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ description, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/tickets");
+  return { error: null };
+}
+
 export async function deleteTicketsBulk(
   ticketIds: string[]
 ): Promise<{ supprimes: number; echecs: number }> {

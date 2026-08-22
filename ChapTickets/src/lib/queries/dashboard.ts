@@ -26,32 +26,40 @@ export type TicketAvecNonLus = {
   nonLus: number;
 };
 
-export async function getAdminDashboardData(supabase: SupabaseClient) {
+export async function getAdminDashboardData(supabase: SupabaseClient, projetId?: string) {
+  let urgentsQuery = supabase
+    .from("tickets")
+    .select(
+      "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+    )
+    .eq("priorite", "urgente")
+    .not("statut", "in", "(resolu,ferme)")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  let recentsQuery = supabase
+    .from("tickets")
+    .select(
+      "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  let projetsQuery = supabase
+    .from("projets")
+    .select("id, nom, tickets(count)")
+    .eq("statut", "en_cours")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (projetId) {
+    urgentsQuery = urgentsQuery.eq("projet_id", projetId);
+    recentsQuery = recentsQuery.eq("projet_id", projetId);
+    projetsQuery = projetsQuery.eq("id", projetId);
+  }
+
   const [{ data: urgents }, { data: recents }, { data: projetsEnCours }] =
-    await Promise.all([
-      supabase
-        .from("tickets")
-        .select(
-          "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
-        )
-        .eq("priorite", "urgente")
-        .not("statut", "in", "(resolu,ferme)")
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("tickets")
-        .select(
-          "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
-        )
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("projets")
-        .select("id, nom, tickets(count)")
-        .eq("statut", "en_cours")
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ]);
+    await Promise.all([urgentsQuery, recentsQuery, projetsQuery]);
 
   const projets: ProjetSummary[] = (projetsEnCours ?? []).map((p) => ({
     id: p.id,
@@ -68,13 +76,18 @@ export async function getAdminDashboardData(supabase: SupabaseClient) {
 
 export async function getClientDashboardData(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  projetId?: string
 ) {
-  const { data: tickets } = await supabase
+  let ticketsQuery = supabase
     .from("tickets")
     .select("id, numero, titre, description, statut, priorite, created_at, projets(nom)")
     .order("created_at", { ascending: false })
     .limit(10);
+
+  if (projetId) ticketsQuery = ticketsQuery.eq("projet_id", projetId);
+
+  const { data: tickets } = await ticketsQuery;
 
   const ticketIds = (tickets ?? []).map((t) => t.id);
 
