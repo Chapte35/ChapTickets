@@ -158,6 +158,67 @@ export async function updateTicketDescriptionClient(
   return { error: null };
 }
 
+/**
+ * Validation client d'un ticket en attente de retour.
+ * Seule transition autorisée : en_attente_client → resolu.
+ * La RLS protège déjà contre toute modification sur un ticket non visible
+ * par ce client — cette vérification de statut est une défense applicative
+ * supplémentaire pour éviter qu'un client valide un ticket qui n'est pas
+ * dans le bon état (ex : requête rejouée hors contexte).
+ */
+export async function validerTicketClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const ticketId = formData.get("ticket_id");
+  const commentaire = formData.get("commentaire");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+
+  // Vérification du statut avant modification
+  const { data: ticket } = await supabase
+    .from("tickets")
+    .select("statut")
+    .eq("id", ticketId)
+    .single();
+
+  if (ticket?.statut !== "en_attente_client") {
+    return { error: "Ce ticket n'est pas en attente de validation client." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("tickets")
+    .update({ statut: "resolu", updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (updateError) return { error: `Erreur : ${updateError.message}` };
+
+  // Historique du changement de statut
+  await supabase.from("ticket_statut_historique").insert({
+    ticket_id: ticketId,
+    ancien_statut: "en_attente_client",
+    nouveau_statut: "resolu",
+    changed_by: userId,
+  });
+
+  // Commentaire optionnel posté dans le thread
+  const texte = typeof commentaire === "string" ? commentaire.trim() : "";
+  if (texte) {
+    await supabase.from("messages").insert({
+      ticket_id: ticketId,
+      auteur_id: userId,
+      contenu: texte,
+    });
+  }
+
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
+  revalidatePath("/dashboard/tickets");
+  return { error: null };
+}
+
 export async function postMessageClient(
   _prevState: FormState,
   formData: FormData

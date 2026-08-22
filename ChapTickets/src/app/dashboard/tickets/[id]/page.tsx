@@ -21,6 +21,7 @@ import {
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { getAllTags } from "@/lib/queries/tags";
 import { ReopenRequestButton } from "./reopen-request-button";
+import { ValidationClientPanel } from "./validation-client-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
@@ -229,6 +230,18 @@ export default async function ClientTicketDetailPage({
                 />
               </div>
 
+              {/* Validation client : affiché si le ticket est en attente de retour */}
+              {statut === "en_attente_client" && (
+                <div className="flex flex-col gap-1.5 border-t pt-4">
+                  <span className="text-xs text-muted-foreground">Actions</span>
+                  <ValidationClientPanel
+                    ticketId={ticket.id}
+                    demandeEnCours={derniereDemande}
+                  />
+                </div>
+              )}
+
+              {/* Réouverture classique : pour les tickets déjà résolus/fermés */}
               {peutDemanderReouverture && (
                 <div className="flex flex-col gap-1.5 border-t pt-4">
                   <span className="text-xs text-muted-foreground">Actions</span>
