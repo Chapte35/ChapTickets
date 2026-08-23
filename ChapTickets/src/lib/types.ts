@@ -98,6 +98,7 @@ export const TICKET_TRI_LABELS: Record<TicketTri, string> = {
 export const STATUTS_ELIGIBLES_REOUVERTURE: readonly TicketStatut[] = [
   "resolu",
   "ferme",
+  "en_attente_client",
 ];
 
 export type DemandeReouvertureStatut = "en_attente" | "acceptee" | "refusee";
