@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getTousLesProjets } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
-import { ReleasesBoard } from "./releases-board";
+import { ReleasesBoardClient } from "./releases-board-client";
 import { TICKET_TRIS, type TicketTri, type TicketStatut, type TicketPriorite } from "@/lib/types";
 
 export type TicketSansRelease = {
@@ -61,7 +61,7 @@ export default async function ReleasesPage({
           ce qui réinitialise le state local (tickets droppés, liste gauche).
           Sans ça, le router.push recharge la page mais React garde le board
           monté et le useState(ticketsInitiaux) ne se réexécute pas. */}
-      <ReleasesBoard
+      <ReleasesBoardClient
         key={JSON.stringify(params)}
         tickets={(tickets ?? []) as unknown as TicketSansRelease[]}
         projets={projets}
