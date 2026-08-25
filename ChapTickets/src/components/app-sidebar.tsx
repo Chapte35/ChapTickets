@@ -19,6 +19,7 @@ import {
   Search,
   UserRound,
   UserCheck,
+  PackageOpen,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ const ICONS = {
   home: Home,
   profil: UserRound,
   mes_tickets: UserCheck,
+  releases: PackageOpen,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIconName = keyof typeof ICONS;

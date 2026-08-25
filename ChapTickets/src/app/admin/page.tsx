@@ -32,6 +32,8 @@ import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
 import { ChartResolutionProjets } from "@/components/dashboard/chart-resolution-projets";
 import { DashboardProjetSync } from "@/components/dashboard-projet-sync";
 import { getTousLesProjets } from "@/lib/queries/tickets";
+import { getReleasesDuProjet, calculerProgressionReleases } from "@/lib/queries/releases";
+import { ReleaseProgressList } from "@/components/release-progress-list";
 
 export default async function AdminHomePage({
   searchParams,
@@ -49,6 +51,7 @@ export default async function AdminHomePage({
     resolutionParProjet,
     { data: tousLesProjets },
     projets,
+    releases,
   ] = await Promise.all([
     getAdminDashboardData(supabase, projetId),
     projetId
@@ -62,9 +65,15 @@ export default async function AdminHomePage({
     getResolutionParProjet(supabase, "semaine", projetId),
     supabase.from("projets").select("id, nom").order("nom"),
     getTousLesProjets(supabase),
+    projetId ? getReleasesDuProjet(supabase, projetId) : Promise.resolve([]),
   ]);
 
   const stats = buildTicketStats((tousLesTickets ?? []) as unknown as TicketPourStats[], 14);
+
+  const releasesAvecProgression = calculerProgressionReleases(
+    releases,
+    (tousLesTickets ?? []) as unknown as { id: string; statut: string; release_id: string | null }[]
+  );
 
   const projetActif = projetId
     ? projets.find((p) => p.id === projetId) ?? null
@@ -139,7 +148,7 @@ export default async function AdminHomePage({
         </Card>
       </div>
 
-      {/* Table tickets + projets en cours */}
+      {/* Table tickets + projets en cours + releases */}
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <Tabs defaultValue="urgences">
@@ -160,41 +169,66 @@ export default async function AdminHomePage({
           </Tabs>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Projets en cours</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {projetsEnCours.length === 0 && (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <FolderKanban />
-                  </EmptyMedia>
-                  <EmptyTitle>Aucun projet en cours</EmptyTitle>
-                  <EmptyDescription>Rien à afficher pour l&apos;instant.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-            {projetsEnCours.length > 0 && (
-              <ul className="flex flex-col divide-y">
-                {projetsEnCours.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/admin/projets/${p.id}`}
-                      className="flex items-center justify-between gap-4 py-2.5 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors"
-                    >
-                      <span className="text-sm font-medium">{p.nom}</span>
-                      <Badge variant="outline">
-                        {p.ticketsCount} ticket{p.ticketsCount > 1 ? "s" : ""}
-                      </Badge>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Projets en cours</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {projetsEnCours.length === 0 && (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <FolderKanban />
+                    </EmptyMedia>
+                    <EmptyTitle>Aucun projet en cours</EmptyTitle>
+                    <EmptyDescription>Rien à afficher pour l&apos;instant.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+              {projetsEnCours.length > 0 && (
+                <ul className="flex flex-col divide-y">
+                  {projetsEnCours.map((p) => (
+                    <li key={p.id}>
+                      <Link
+                        href={`/admin/projets/${p.id}`}
+                        className="flex items-center justify-between gap-4 py-2.5 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors"
+                      >
+                        <span className="text-sm font-medium">{p.nom}</span>
+                        <Badge variant="outline">
+                          {p.ticketsCount} ticket{p.ticketsCount > 1 ? "s" : ""}
+                        </Badge>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Releases — uniquement si un projet est sélectionné */}
+          {projetId && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Releases</CardTitle>
+                  <Link
+                    href={`/admin/releases?projet=${projetId}`}
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                  >
+                    Gérer →
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ReleaseProgressList
+                  releases={releasesAvecProgression}
+                  projetId={projetId}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

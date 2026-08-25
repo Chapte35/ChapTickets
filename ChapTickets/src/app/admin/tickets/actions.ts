@@ -535,3 +535,28 @@ export async function updateTicketsStatutBulk(
 
   return { maj, echecs: ticketIds.length - maj };
 }
+
+/**
+ * Assignation en masse — met à jour assigne_a sur tous les tickets
+ * sélectionnés en un seul update SQL (contrairement au bulk statut qui
+ * passe par updateTicketStatutInterne pour l'historique, l'assignation
+ * n'a pas de table d'historique dédiée).
+ */
+export async function updateTicketsAssigneBulk(
+  ticketIds: string[],
+  assigneA: string | null
+): Promise<{ maj: number; echecs: number }> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { maj: 0, echecs: ticketIds.length };
+
+  const { error, count } = await supabase
+    .from("tickets")
+    .update({ assigne_a: assigneA, updated_at: new Date().toISOString() })
+    .in("id", ticketIds)
+    .select("id", { count: "exact", head: true });
+
+  if (error) return { maj: 0, echecs: ticketIds.length };
+
+  revalidatePath("/admin/tickets");
+  return { maj: count ?? ticketIds.length, echecs: 0 };
+}

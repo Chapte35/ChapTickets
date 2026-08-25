@@ -72,7 +72,7 @@ export default async function AdminTicketsPage({
         </p>
       )}
       {!error && (
-        <AdminTicketsTable tickets={(tickets ?? []) as unknown as AdminTicketRow[]} />
+        <AdminTicketsTable tickets={(tickets ?? []) as unknown as AdminTicketRow[]} profils={clients ?? []} />
       )}
     </div>
   );

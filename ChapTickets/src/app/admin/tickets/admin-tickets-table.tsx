@@ -33,7 +33,7 @@ import {
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
-import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk } from "./actions";
+import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk, updateTicketsAssigneBulk } from "./actions";
 
 export type AdminTicketRow = {
   id: string;
@@ -47,6 +47,8 @@ export type AdminTicketRow = {
   projets: { nom: string; code_court?: string | null } | null;
   profiles: { email: string | null; full_name: string | null } | null;
 };
+
+type ProfilOption = { id: string; full_name: string | null; email: string | null };
 
 function construireExtrait(tickets: AdminTicketRow[]): string {
   return tickets
@@ -65,7 +67,7 @@ function construireExtrait(tickets: AdminTicketRow[]): string {
     .join("\n\n---\n\n");
 }
 
-export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
+export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRow[]; profils: ProfilOption[] }) {
   const router = useRouter();
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
@@ -140,6 +142,9 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
   const ticketsSelectionnes = tickets.filter((t) => selection.has(t.id));
   const [statutMasse, setStatutMasse] = useState<TicketStatut | "">("");
   const [applyingStatut, setApplyingStatut] = useState(false);
+  const NON_ASSIGNE = "__aucun__";
+  const [assigneMasse, setAssigneMasse] = useState<string>("");
+  const [applyingAssigne, setApplyingAssigne] = useState(false);
 
   async function handleExtraire() {
     const texte = construireExtrait(ticketsSelectionnes);
@@ -181,6 +186,20 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
     if (maj > 0) toast.success(`${maj} ticket${maj > 1 ? "s" : ""} passé${maj > 1 ? "s" : ""} en "${TICKET_STATUT_LABELS[statutMasse]}".`);
     if (echecs > 0) toast.error(`${echecs} changement(s) ont échoué.`);
     setStatutMasse("");
+    setSelection(new Set());
+    router.refresh();
+  }
+
+  async function handleApplyAssigneMasse() {
+    if (!assigneMasse) return;
+    setApplyingAssigne(true);
+    const ids = [...selection];
+    const valeur = assigneMasse === NON_ASSIGNE ? null : assigneMasse;
+    const { maj, echecs } = await updateTicketsAssigneBulk(ids, valeur);
+    setApplyingAssigne(false);
+    if (maj > 0) toast.success(`${maj} ticket${maj > 1 ? "s" : ""} assigné${maj > 1 ? "s" : ""}.`);
+    if (echecs > 0) toast.error(`${echecs} assignation(s) ont échoué.`);
+    setAssigneMasse("");
     setSelection(new Set());
     router.refresh();
   }
@@ -229,6 +248,27 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
             onClick={handleApplyStatutMasse}
           >
             {applyingStatut ? "..." : "Appliquer"}
+          </Button>
+          <Select value={assigneMasse} onValueChange={setAssigneMasse}>
+            <SelectTrigger size="sm" className="w-[180px]">
+              <SelectValue placeholder="Assigner à..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NON_ASSIGNE}>— Désassigner</SelectItem>
+              {profils.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.full_name || p.email || p.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!assigneMasse || applyingAssigne}
+            onClick={handleApplyAssigneMasse}
+          >
+            {applyingAssigne ? "..." : "Assigner"}
           </Button>
           <ConfirmDeleteButton
             size="text"

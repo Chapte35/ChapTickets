@@ -8,6 +8,7 @@ import { getTousLesProjets } from "@/lib/queries/tickets";
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/admin/releases", label: "Releases", icon: "releases" },
   { href: "/admin/calendrier", label: "Calendrier", icon: "calendrier" },
   { href: "/admin/messagerie", label: "Messagerie", icon: "messagerie" },
   { href: "/admin/idees", label: "Idées", icon: "idees" },
