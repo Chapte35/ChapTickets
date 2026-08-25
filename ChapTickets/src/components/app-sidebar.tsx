@@ -18,6 +18,7 @@ import {
   Calendar,
   Search,
   UserRound,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ const ICONS = {
   clients: Users,
   home: Home,
   profil: UserRound,
+  mes_tickets: UserCheck,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIconName = keyof typeof ICONS;

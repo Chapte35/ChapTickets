@@ -10,6 +10,7 @@ import {
   type TicketStatut,
   type Tag,
 } from "@/lib/types";
+import type { ClientOption } from "@/lib/queries/tickets";
 import { updateTicketTitre, updateTicketDescription } from "../actions";
 
 /**
@@ -29,6 +30,8 @@ export function TicketDetailEditable({
   tags,
   tousLesTags,
   refAffichee,
+  clientsDuProjet,
+  clientIdActuel,
 }: {
   ticketId: string;
   titre: string;
@@ -41,6 +44,10 @@ export function TicketDetailEditable({
   tags: Tag[];
   tousLesTags: Tag[];
   refAffichee?: string;
+  /** Clients rattachés au projet — pour la modal d'assignation en_attente_client. */
+  clientsDuProjet: ClientOption[];
+  /** client_id du ticket — pré-sélectionné dans la modal. */
+  clientIdActuel: string | null;
 }) {
   return (
     <Card>
@@ -105,7 +112,12 @@ export function TicketDetailEditable({
         {/* Statut */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">Statut</span>
-          <StatusUpdateForm ticketId={ticketId} currentStatut={statut} />
+          <StatusUpdateForm
+            ticketId={ticketId}
+            currentStatut={statut}
+            clientsDuProjet={clientsDuProjet}
+            clientIdActuel={clientIdActuel}
+          />
         </div>
 
         {dateEcheance && (

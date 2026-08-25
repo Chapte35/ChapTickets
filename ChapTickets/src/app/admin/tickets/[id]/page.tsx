@@ -91,6 +91,16 @@ export default async function AdminTicketDetailPage({
 
   if (error || !ticket) notFound();
 
+  // Clients rattachés au projet — fetchés après avoir le ticket pour avoir projet_id
+  const { data: clientsDuProjetRows } = await supabase
+    .from("client_projets")
+    .select("profiles(id, email, full_name)")
+    .eq("projet_id", ticket.projet_id);
+
+  const clientsDuProjet = (clientsDuProjetRows ?? [])
+    .map((r) => r.profiles as unknown as { id: string; email: string | null; full_name: string | null } | null)
+    .filter((c): c is { id: string; email: string | null; full_name: string | null } => c !== null);
+
   const projet = ticket.projets as unknown as { nom: string; code_court: string | null } | null;
   const client = ticket.profiles as unknown as {
     email: string | null;
@@ -168,6 +178,8 @@ export default async function AdminTicketDetailPage({
             tags={tagsActuels}
             tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
             refAffichee={refAffichee}
+            clientsDuProjet={clientsDuProjet}
+            clientIdActuel={(ticket as unknown as { client_id: string | null }).client_id}
           />
 
           <Card>

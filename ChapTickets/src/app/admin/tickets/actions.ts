@@ -166,6 +166,65 @@ export async function updateTicketStatus(
 }
 
 /**
+ * Passage en "en_attente_client" avec assignation simultanée.
+ * Appelé depuis la modal de StatusUpdateForm quand l'admin choisit
+ * un client à qui assigner le ticket. Le champ assigne_a bascule sur
+ * l'uuid client jusqu'à ce qu'il valide ou réouvre.
+ * Si assigneA est absent (skip), assigne_a est mis à null.
+ */
+export async function updateTicketStatusEtAssignation(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const assigneA = formData.get("assigne_a");
+
+  if (typeof ticketId !== "string" || !ticketId) {
+    return { error: "Ticket invalide." };
+  }
+
+  const valeurAssigne =
+    typeof assigneA === "string" && assigneA.trim() ? assigneA.trim() : null;
+
+  // On met à jour statut + assigne_a en un seul appel
+  const { error } = await supabase
+    .from("tickets")
+    .update({
+      statut: "en_attente_client",
+      assigne_a: valeurAssigne,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  // Log historique statut
+  const { data: avant } = await supabase
+    .from("tickets")
+    .select("statut")
+    .eq("id", ticketId)
+    .single();
+
+  if (avant && avant.statut !== "en_attente_client") {
+    await supabase.from("ticket_statut_historique").insert({
+      ticket_id: ticketId,
+      ancien_statut: avant.statut,
+      nouveau_statut: "en_attente_client",
+      changed_by: (await supabase.auth.getUser()).data.user?.id,
+    });
+  }
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/projets");
+  revalidatePath("/admin/calendrier");
+  return { error: null };
+}
+
+/**
  * Même pattern que updateTicketStatus, en plus simple : la priorité n'a
  * pas de table d'historique dédiée (contrairement au statut, qui alimente
  * le calendrier via ticket_statut_historique) — rien à logger ici.
@@ -239,7 +298,7 @@ export async function traiterDemandeReouverture(
     // date de création, donc jamais qu'une seule release possible.
     const { data: original, error: fetchError } = await supabase
       .from("tickets")
-      .select("titre, description, projet_id, client_id, priorite")
+      .select("titre, description, projet_id, client_id, priorite, created_by")
       .eq("id", ticketId)
       .single();
 
@@ -256,6 +315,8 @@ export async function traiterDemandeReouverture(
         client_id: original.client_id,
         priorite: original.priorite,
         created_by: userId,
+        // Le nouveau ticket repart vers le dev (created_by de l'original ou l'admin courant)
+        assigne_a: original.created_by ?? userId,
         statut: "ouvert",
         ticket_origine_id: ticketId,
       })

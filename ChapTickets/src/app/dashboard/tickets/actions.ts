@@ -227,7 +227,7 @@ export async function validerTicketClient(
   // Vérification du statut avant modification
   const { data: ticket } = await supabase
     .from("tickets")
-    .select("statut")
+    .select("statut, created_by")
     .eq("id", ticketId)
     .single();
 
@@ -237,7 +237,12 @@ export async function validerTicketClient(
 
   const { error: updateError } = await supabase
     .from("tickets")
-    .update({ statut: "resolu", updated_at: new Date().toISOString() })
+    .update({
+      statut: "resolu",
+      // Le client a validé : on réassigne au dev (created_by) pour la suite éventuelle
+      assigne_a: ticket.created_by ?? null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", ticketId);
 
   if (updateError) return { error: `Erreur : ${updateError.message}` };
