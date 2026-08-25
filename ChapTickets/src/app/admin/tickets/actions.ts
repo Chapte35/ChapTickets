@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/guards";
 import { TICKET_STATUTS, TICKET_PRIORITES } from "@/lib/types";
+import { logHistorique, creerNotification } from "@/lib/historique";
 
 export type FormState = { error: string | null };
 
@@ -141,10 +142,17 @@ export async function updateTicketStatutInterne(
         changed_by: userId,
       });
     if (historiqueError) {
-      // Le changement de statut lui-même a réussi — on ne fait pas échouer
-      // toute l'action pour un souci sur une table annexe d'historique.
       console.error("[updateTicketStatutInterne] échec log historique:", historiqueError.message);
     }
+
+    // Log dans ticket_historique (générique)
+    await logHistorique(supabase, {
+      ticketId,
+      champ: "statut",
+      ancienneValeur: avant.statut,
+      nouvelleValeur: statut,
+      changedBy: userId,
+    });
   }
 
   revalidatePath(`/admin/tickets/${ticketId}`);
@@ -182,7 +190,7 @@ export async function updateTicketStatusEtAssignation(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { supabase, isAdmin } = await requireAdmin();
+  const { supabase, isAdmin, userId } = await requireAdmin();
   if (!isAdmin) return { error: "Action réservée à l'admin." };
 
   const ticketId = formData.get("ticket_id");
@@ -193,9 +201,17 @@ export async function updateTicketStatusEtAssignation(
   }
 
   const valeurAssigne =
-    typeof assigneA === "string" && assigneA.trim() ? assigneA.trim() : null;
+    typeof assigneA === "string" && assigneA.trim() && assigneA !== "__aucun__"
+      ? assigneA.trim()
+      : null;
 
-  // On met à jour statut + assigne_a en un seul appel
+  // Lire l'état avant
+  const { data: avant } = await supabase
+    .from("tickets")
+    .select("statut, assigne_a, titre")
+    .eq("id", ticketId)
+    .single();
+
   const { error } = await supabase
     .from("tickets")
     .update({
@@ -207,20 +223,47 @@ export async function updateTicketStatusEtAssignation(
 
   if (error) return { error: `Erreur : ${error.message}` };
 
-  // Log historique statut
-  const { data: avant } = await supabase
-    .from("tickets")
-    .select("statut")
-    .eq("id", ticketId)
-    .single();
+  const ancienStatut = (avant as unknown as { statut: string })?.statut;
 
-  if (avant && avant.statut !== "en_attente_client") {
+  // Log statut dans les deux tables
+  if (ancienStatut && ancienStatut !== "en_attente_client") {
     await supabase.from("ticket_statut_historique").insert({
       ticket_id: ticketId,
-      ancien_statut: avant.statut,
+      ancien_statut: ancienStatut,
       nouveau_statut: "en_attente_client",
-      changed_by: (await supabase.auth.getUser()).data.user?.id,
+      changed_by: userId,
     });
+    await logHistorique(supabase, {
+      ticketId,
+      champ: "statut",
+      ancienneValeur: ancienStatut,
+      nouvelleValeur: "en_attente_client",
+      changedBy: userId,
+    });
+  }
+
+  // Log assignation
+  const ancienAssigne = (avant as unknown as { assigne_a: string | null })?.assigne_a ?? null;
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "assigne_a",
+    ancienneValeur: ancienAssigne,
+    nouvelleValeur: valeurAssigne,
+    changedBy: userId,
+  });
+
+  // Notif + email si on assigne un client
+  if (valeurAssigne && valeurAssigne !== ancienAssigne) {
+    const { data: profil } = await supabase
+      .from("profiles")
+      .select("role, email, full_name")
+      .eq("id", valeurAssigne)
+      .single();
+
+    if (profil?.role === "client") {
+      // Notification in-app — l'email partira dans le récap quotidien à 20h
+      await creerNotification(supabase, { userId: valeurAssigne, ticketId });
+    }
   }
 
   revalidatePath(`/admin/tickets/${ticketId}`);
@@ -255,6 +298,9 @@ export async function updateTicketPriorite(
     return { error: "Priorité invalide." };
   }
 
+  const { data: avant } = await supabase
+    .from("tickets").select("priorite").eq("id", ticketId).single();
+
   const { error } = await supabase
     .from("tickets")
     .update({ priorite, updated_at: new Date().toISOString() })
@@ -264,13 +310,20 @@ export async function updateTicketPriorite(
     return { error: `Erreur de mise à jour : ${error.message}` };
   }
 
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "priorite",
+    ancienneValeur: avant?.priorite ?? null,
+    nouvelleValeur: priorite as string,
+    changedBy: (await supabase.auth.getUser()).data.user?.id,
+  });
+
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");
   return { error: null };
 }
 
 /**
- * Accepter une demande de réouverture : passe le ticket en "ouvert" ET
  * marque la demande "acceptee", dans le même geste (deux updates, pas de
  * transaction multi-table côté Supabase JS — acceptable ici, le pire cas
  * en cas d'échec partiel est une demande qui reste "en_attente" avec un
@@ -453,7 +506,7 @@ export async function updateTicketTitre(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { supabase, isAdmin } = await requireAdmin();
+  const { supabase, isAdmin, userId } = await requireAdmin();
   if (!isAdmin) return { error: "Action réservée à l'admin." };
 
   const ticketId = formData.get("ticket_id");
@@ -462,12 +515,22 @@ export async function updateTicketTitre(
   if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
   if (typeof valeur !== "string" || !valeur.trim()) return { error: "Le titre ne peut pas être vide." };
 
+  const { data: avant } = await supabase.from("tickets").select("titre").eq("id", ticketId).single();
+
   const { error } = await supabase
     .from("tickets")
     .update({ titre: valeur.trim(), updated_at: new Date().toISOString() })
     .eq("id", ticketId);
 
   if (error) return { error: `Erreur : ${error.message}` };
+
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "titre",
+    ancienneValeur: avant?.titre ?? null,
+    nouvelleValeur: valeur.trim(),
+    changedBy: userId,
+  });
 
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");
@@ -478,15 +541,16 @@ export async function updateTicketDescription(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { supabase, isAdmin } = await requireAdmin();
+  const { supabase, isAdmin, userId } = await requireAdmin();
   if (!isAdmin) return { error: "Action réservée à l'admin." };
 
   const ticketId = formData.get("ticket_id");
   const valeur = formData.get("valeur");
 
   if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
-  // Description nullable : une chaîne vide = null en base
   const description = typeof valeur === "string" ? valeur.trim() || null : null;
+
+  const { data: avant } = await supabase.from("tickets").select("description").eq("id", ticketId).single();
 
   const { error } = await supabase
     .from("tickets")
@@ -494,6 +558,14 @@ export async function updateTicketDescription(
     .eq("id", ticketId);
 
   if (error) return { error: `Erreur : ${error.message}` };
+
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "description",
+    ancienneValeur: avant?.description ?? null,
+    nouvelleValeur: description,
+    changedBy: userId,
+  });
 
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");
@@ -570,7 +642,7 @@ export async function updateTicketType(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { supabase, isAdmin } = await requireAdmin();
+  const { supabase, isAdmin, userId } = await requireAdmin();
   if (!isAdmin) return { error: "Action réservée à l'admin." };
 
   const ticketId = formData.get("ticket_id");
@@ -583,12 +655,22 @@ export async function updateTicketType(
       ? typeRaw
       : null;
 
+  const { data: avant } = await supabase.from("tickets").select("type_ticket").eq("id", ticketId).single();
+
   const { error } = await supabase
     .from("tickets")
     .update({ type_ticket: type, updated_at: new Date().toISOString() })
     .eq("id", ticketId);
 
   if (error) return { error: `Erreur : ${error.message}` };
+
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "type_ticket",
+    ancienneValeur: (avant as unknown as { type_ticket: string | null })?.type_ticket ?? null,
+    nouvelleValeur: type,
+    changedBy: userId,
+  });
 
   revalidatePath(`/admin/tickets/${ticketId}`);
   revalidatePath("/admin/tickets");

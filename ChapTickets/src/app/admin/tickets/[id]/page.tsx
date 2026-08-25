@@ -24,6 +24,7 @@ import {
   type DemandeReouverture,
 } from "./reopen-requests-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
+import { TicketHistorique } from "@/components/ticket-historique";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
@@ -205,6 +206,8 @@ export default async function AdminTicketDetailPage({
                   action={postMessageAdmin}
                 />
               )}
+
+              <TicketHistorique ticketId={ticket.id} />
             </CardContent>
           </Card>
         </div>

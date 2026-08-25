@@ -4,15 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
+import { NotifBadge } from "@/components/notif-badge";
 
-const NAV_ITEMS: SidebarItem[] = [
-  { href: "/dashboard", label: "Mon espace", icon: "home" },
-  { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
-  { href: "/dashboard/mes-tickets", label: "Mes tickets", icon: "mes_tickets" },
-  { href: "/dashboard/calendrier", label: "Calendrier", icon: "calendrier" },
-  { href: "/dashboard/messagerie", label: "Messagerie", icon: "messagerie" },
-  { href: "/dashboard/profil", label: "Profil", icon: "profil" },
-];
+  const navItems: SidebarItem[] = [
+    { href: "/dashboard", label: "Mon espace", icon: "home" },
+    { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
+    { href: "/dashboard/mes-tickets", label: "Mes tickets", icon: "mes_tickets", badge: <NotifBadge /> },
+    { href: "/dashboard/releases", label: "Releases", icon: "releases" },
+    { href: "/dashboard/calendrier", label: "Calendrier", icon: "calendrier" },
+    { href: "/dashboard/messagerie", label: "Messagerie", icon: "messagerie" },
+    { href: "/dashboard/profil", label: "Profil", icon: "profil" },
+  ];
 
 export default async function DashboardLayout({
   children,
@@ -43,7 +45,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen">
       <AppSidebar
         title="Mon espace"
-        items={NAV_ITEMS}
+        items={navItems}
         defaultCollapsed={defaultCollapsed}
         logoutAction={logout}
         basePath="/dashboard"

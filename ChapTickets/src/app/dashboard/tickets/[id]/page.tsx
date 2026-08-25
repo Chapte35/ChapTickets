@@ -17,6 +17,7 @@ import { getAllTags } from "@/lib/queries/tags";
 import { ReopenRequestButton } from "./reopen-request-button";
 import { ValidationClientPanel } from "./validation-client-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
+import { TicketHistorique } from "@/components/ticket-historique";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
@@ -206,6 +207,8 @@ export default async function ClientTicketDetailPage({
                   action={postMessageClient}
                 />
               )}
+
+              <TicketHistorique ticketId={ticket.id} />
             </CardContent>
           </Card>
         </div>

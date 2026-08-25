@@ -17,6 +17,14 @@ export default async function MesTicketsPage({
 
   if (!user) return null;
 
+  // Marquer toutes les notifs non lues comme lues — le badge disparaîtra
+  // au prochain rendu du layout (revalidatePath déclenche un re-render du RSC).
+  await supabase
+    .from("notifications")
+    .update({ lu: true })
+    .eq("user_id", user.id)
+    .eq("lu", false);
+
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
     : "recent";

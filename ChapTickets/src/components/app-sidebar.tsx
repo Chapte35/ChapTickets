@@ -66,6 +66,8 @@ export type SidebarItem = {
   href: string;
   label: string;
   icon: SidebarIconName;
+  /** Contenu affiché à droite du label (ex: badge de notifs non lues). */
+  badge?: React.ReactNode;
 };
 
 /**
@@ -96,6 +98,7 @@ function SidebarLink({
     >
       <Icon className="size-4 shrink-0" />
       {!collapsed && <span className="truncate">{item.label}</span>}
+      {!collapsed && item.badge}
     </Link>
   );
 
