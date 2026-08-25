@@ -66,6 +66,18 @@ export function CreateTicketClientForm({
         </div>
 
         <div className="flex flex-col gap-2">
+          <Label htmlFor="ref_client">
+            Référence client{" "}
+            <span className="text-muted-foreground font-normal">(optionnel)</span>
+          </Label>
+          <Input
+            id="ref_client"
+            name="ref_client"
+            placeholder="Ex : PROJ-42, #1234…"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
           <Label htmlFor="description">Description</Label>
           <Textarea
             id="description"
@@ -83,7 +95,7 @@ export function CreateTicketClientForm({
             value={projetId}
             onValueChange={(value) => {
               setProjetId(value);
-              setTagsSelectionnes([]); // certains tags sont exclusifs à un projet
+              setTagsSelectionnes([]);
             }}
             required
           >

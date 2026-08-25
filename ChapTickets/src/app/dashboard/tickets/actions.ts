@@ -18,6 +18,7 @@ export async function createTicketClient(
   const description = formData.get("description");
   const projetId = formData.get("projet_id");
   const priorite = formData.get("priorite");
+  const refClient = formData.get("ref_client");
 
   if (typeof titre !== "string" || !titre.trim()) {
     return { error: "Titre requis." };
@@ -44,6 +45,7 @@ export async function createTicketClient(
       client_id: userId,
       created_by: userId,
       priorite,
+      ref_client: typeof refClient === "string" && refClient.trim() ? refClient.trim() : null,
     })
     .select("id")
     .single();

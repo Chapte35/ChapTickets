@@ -18,7 +18,7 @@ import {
   type TicketPriorite,
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
-import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
+import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
 
 export type ClientTicketRow = {
   id: string;
@@ -34,6 +34,7 @@ export type ClientTicketRow = {
 
 export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) {
   const router = useRouter();
+  const { openId, rowHandlers, popoverHandlers, closePopover } = useRowHoverPreview();
 
   if (tickets.length === 0) {
     return (
@@ -63,6 +64,7 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
             key={t.id}
             className="cursor-pointer"
             onClick={() => router.push(`/dashboard/tickets/${t.id}`)}
+            {...rowHandlers(t.id)}
           >
             <TableCell className="text-muted-foreground text-xs">
               {t.ref_client ?? <span className="italic text-muted-foreground/50">—</span>}
@@ -96,6 +98,9 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
                 statut={t.statut}
                 priorite={t.priorite}
                 description={t.description}
+                open={openId === t.id}
+                onOpenChange={(v) => { if (!v) closePopover(); }}
+                popoverHandlers={popoverHandlers()}
               />
             </TableCell>
           </TableRow>

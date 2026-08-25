@@ -32,7 +32,7 @@ import {
   type TicketPriorite,
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
-import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
+import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
 import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk, updateTicketsAssigneBulk } from "./actions";
 
 export type AdminTicketRow = {
@@ -69,6 +69,7 @@ function construireExtrait(tickets: AdminTicketRow[]): string {
 
 export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRow[]; profils: ProfilOption[] }) {
   const router = useRouter();
+  const { openId, rowHandlers, popoverHandlers, closePopover } = useRowHoverPreview();
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -314,6 +315,7 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
               data-state={selection.has(t.id) ? "selected" : undefined}
               className="cursor-pointer"
               onClick={() => handleRowClick(t.id)}
+              {...rowHandlers(t.id)}
             >
               {/* Checkbox — stopPropagation */}
               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -351,6 +353,9 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
                     statut={t.statut}
                     priorite={t.priorite}
                     description={t.description}
+                    open={openId === t.id}
+                    onOpenChange={(v) => { if (!v) closePopover(); }}
+                    popoverHandlers={popoverHandlers()}
                   />
                   <ConfirmDeleteButton onConfirm={() => handleDeleteOne(t.id)} />
                 </div>
