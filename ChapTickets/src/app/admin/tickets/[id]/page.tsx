@@ -25,6 +25,7 @@ import {
 } from "./reopen-requests-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { TicketHistorique } from "@/components/ticket-historique";
+import { TicketRelations, type TicketRelation } from "@/components/ticket-relations";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
@@ -54,6 +55,7 @@ export default async function AdminTicketDetailPage({
     { data: checklist },
     { data: attachmentsRows },
     profils,
+    { data: relationsRows },
   ] = await Promise.all([
     supabase
       .from("tickets_avec_rang")
@@ -88,6 +90,10 @@ export default async function AdminTicketDetailPage({
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),
     getTousLesProfils(supabase),
+    supabase
+      .from("ticket_relations")
+      .select("ticket_cible_id, tickets_avec_rang!ticket_relations_ticket_cible_id_fkey(id, rang_projet, titre, statut, priorite, projets(code_court))")
+      .eq("ticket_id", id),
   ]);
 
   if (error || !ticket) notFound();
@@ -112,6 +118,23 @@ export default async function AdminTicketDetailPage({
   const assigneAId = (ticket as unknown as { assigne_a: string | null }).assigne_a;
 
   const refAffichee = formatRefTicket(ticket.rang_projet, projet?.code_court);
+
+  const relationsFormatees: TicketRelation[] = (relationsRows ?? []).map((r) => {
+    const t = r.tickets_avec_rang as unknown as {
+      id: string; rang_projet: number; titre: string;
+      statut: string; priorite: string;
+      projets: { code_court: string | null } | null;
+    };
+    return {
+      id: t.id,
+      rang_projet: t.rang_projet,
+      titre: t.titre,
+      statut: t.statut as TicketStatut,
+      priorite: t.priorite as TicketPriorite,
+      code_court: t.projets?.code_court ?? null,
+      lien: `/admin/tickets/${t.id}`,
+    };
+  });
 
   // Requête séparée plutôt qu'une jointure auto-référencée dans le select
   // principal (tickets -> tickets) : ce genre de self-join via PostgREST
@@ -206,6 +229,11 @@ export default async function AdminTicketDetailPage({
                   action={postMessageAdmin}
                 />
               )}
+
+              <TicketRelations
+                ticketId={ticket.id}
+                relationsInitiales={relationsFormatees}
+              />
 
               <TicketHistorique ticketId={ticket.id} />
             </CardContent>

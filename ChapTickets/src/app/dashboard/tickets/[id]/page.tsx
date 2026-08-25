@@ -18,6 +18,7 @@ import { ReopenRequestButton } from "./reopen-request-button";
 import { ValidationClientPanel } from "./validation-client-panel";
 import { MessageThread, type MessageRow } from "@/components/message-thread";
 import { TicketHistorique } from "@/components/ticket-historique";
+import { TicketRelations, type TicketRelation } from "@/components/ticket-relations";
 import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
@@ -46,6 +47,7 @@ export default async function ClientTicketDetailPage({
     tousLesTags,
     { data: checklist },
     { data: attachmentsRows },
+    { data: relationsRows },
   ] = await Promise.all([
     supabase
       .from("tickets_avec_rang")
@@ -78,6 +80,10 @@ export default async function ClientTicketDetailPage({
       .select("id, storage_path, nom_fichier, taille_octets, created_at")
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("ticket_relations")
+      .select("ticket_cible_id, tickets_avec_rang!ticket_relations_ticket_cible_id_fkey(id, rang_projet, titre, statut, priorite, projets(code_court))")
+      .eq("ticket_id", id),
   ]);
 
   if (error || !ticket) notFound();
@@ -88,6 +94,23 @@ export default async function ClientTicketDetailPage({
   const refAffichee = formatRefTicket(ticket.rang_projet, projet?.code_court);
   const createdBy = (ticket as unknown as { created_by: string | null }).created_by;
   const estAuteur = !!user && createdBy === user.id;
+
+  const relationsFormatees: TicketRelation[] = (relationsRows ?? []).map((r) => {
+    const t = r.tickets_avec_rang as unknown as {
+      id: string; rang_projet: number; titre: string;
+      statut: string; priorite: string;
+      projets: { code_court: string | null } | null;
+    };
+    return {
+      id: t.id,
+      rang_projet: t.rang_projet,
+      titre: t.titre,
+      statut: t.statut as TicketStatut,
+      priorite: t.priorite as TicketPriorite,
+      code_court: t.projets?.code_court ?? null,
+      lien: `/dashboard/tickets/${t.id}`,
+    };
+  });
   const derniereDemande = demandes?.[0] ?? null;
   // Une fois une demande acceptée, ce ticket est remplacé par un nouveau —
   // pas la peine (et pas cohérent) de permettre une nouvelle demande dessus.
@@ -207,6 +230,11 @@ export default async function ClientTicketDetailPage({
                   action={postMessageClient}
                 />
               )}
+
+              <TicketRelations
+                ticketId={ticket.id}
+                relationsInitiales={relationsFormatees}
+              />
 
               <TicketHistorique ticketId={ticket.id} />
             </CardContent>
