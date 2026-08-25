@@ -8,8 +8,8 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
     await Promise.all([
       supabase.from("projets").select("id, nom, description, statut").eq("id", projetId).single(),
       supabase
-        .from("tickets")
-        .select("id, titre, statut, priorite, created_at, updated_at, release_id")
+        .from("tickets_avec_rang")
+        .select("id, titre, statut, priorite, created_at, updated_at, release_id, rang_projet, projets(code_court)")
         .eq("projet_id", projetId),
       supabase.from("client_projets").select("profiles(id, full_name, email)").eq("projet_id", projetId),
       getReleasesDuProjet(supabase, projetId),
@@ -31,6 +31,8 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
   const tickets = (ticketsRows ?? []) as unknown as (TicketPourStats & {
     titre: string;
     release_id: string | null;
+    rang_projet: number;
+    projets: { code_court: string | null } | null;
   })[];
 
   const stats = buildTicketStats(tickets, 14);
@@ -44,6 +46,8 @@ export async function getProjetOverviewData(supabase: SupabaseClient, projetId: 
     titre: t.titre,
     statut: t.statut as TicketStatut,
     priorite: t.priorite as TicketPriorite,
+    rang_projet: t.rang_projet,
+    code_court: t.projets?.code_court ?? null,
   }));
 
   const releasesAvecProgression = calculerProgressionReleases(releases, tickets);

@@ -19,18 +19,18 @@ export default async function AdminTicketsPage({
     : "recent";
 
   let query = supabase
-    .from("tickets")
+    .from("tickets_avec_rang")
     .select(
-      "id, numero, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+      "id, rang_projet, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
     );
 
-  // "échéance" met les tickets sans date_prevue à la fin plutôt qu'au
-  // hasard : nullsFirst: false, sinon Postgres les remonte en tête par
-  // défaut ce qui n'a aucun sens pour un tri "prochaine échéance".
+  // "écheance" → date_prevue, nullsFirst:false pour mettre les sans-date à la fin.
+  // "recent"/"ancien" → rang_projet DESC/ASC : les tickets les plus récents du
+  // projet (numéro le plus élevé) en premier pour "recent", ordre naturel pour "ancien".
   query =
     tri === "echeance"
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
-      : query.order("created_at", { ascending: tri === "ancien" });
+      : query.order("rang_projet", { ascending: tri === "ancien" });
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);

@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils";
 import { TAG_COLOR_CLASSES, type Tag } from "@/lib/types";
 import { toggleTicketTag } from "@/lib/actions/ticket-extras";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -63,44 +68,46 @@ export function TicketTagsEditor({
         </span>
       ))}
 
-      <div className="relative">
+      <Popover open={pickerOuvert} onOpenChange={setPickerOuvert}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => setPickerOuvert((v) => !v)}
-              className="inline-flex items-center justify-center rounded-full border border-dashed size-6 text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
-              aria-label="Ajouter un tag"
-            >
-              <Plus className="size-3.5" />
-            </button>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-full border border-dashed size-6 text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                aria-label="Ajouter un tag"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>Ajouter un tag</TooltipContent>
         </Tooltip>
 
-        {pickerOuvert && (
-          <div className="absolute z-10 top-8 left-0 flex flex-wrap gap-1.5 rounded-md border bg-popover p-2 shadow-md w-56">
-            {tagsDisponibles.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Tous les tags existants sont déjà posés.
-              </p>
-            )}
-            {tagsDisponibles.map((tag) => (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => ajouter(tag.id)}
-                className={cn(
-                  "rounded-full border px-2 py-0.5 text-xs font-medium hover:opacity-70",
-                  TAG_COLOR_CLASSES[tag.couleur]
-                )}
-              >
-                {tag.nom}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        <PopoverContent className="w-64 p-2" align="start">
+          {tagsDisponibles.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-1">
+              Tous les tags existants sont déjà posés.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {tagsDisponibles.map((tag) => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => ajouter(tag.id)}
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-xs font-medium hover:opacity-70",
+                    TAG_COLOR_CLASSES[tag.couleur]
+                  )}
+                >
+                  {tag.nom}
+                </button>
+              ))}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

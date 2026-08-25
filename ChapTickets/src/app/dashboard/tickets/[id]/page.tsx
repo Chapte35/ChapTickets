@@ -1,24 +1,18 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
-  TICKET_STATUT_LABELS,
   STATUTS_ELIGIBLES_REOUVERTURE,
-  ticketStatutBadgeVariant,
   formatRefTicket,
   type TicketStatut,
   type TicketPriorite,
   type Tag,
   tagsVisiblesPourProjet,
 } from "@/lib/types";
-import { PrioriteBadge } from "@/components/priorite-badge";
 import { getAllTags } from "@/lib/queries/tags";
 import { ReopenRequestButton } from "./reopen-request-button";
 import { ValidationClientPanel } from "./validation-client-panel";
@@ -27,7 +21,6 @@ import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
 import { TicketDetailEditableClient } from "./ticket-detail-editable-client";
-import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
 import { postMessageClient } from "../actions";
@@ -54,9 +47,9 @@ export default async function ClientTicketDetailPage({
     { data: attachmentsRows },
   ] = await Promise.all([
     supabase
-      .from("tickets")
+      .from("tickets_avec_rang")
       .select(
-        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email)"
+        "id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, created_by, projets(nom, code_court)"
       )
       .eq("id", id)
       .single(),
@@ -89,10 +82,11 @@ export default async function ClientTicketDetailPage({
   if (error || !ticket) notFound();
 
   const projet = ticket.projets as unknown as { nom: string; code_court: string | null } | null;
-  const assigneProfile = (ticket as unknown as { assigne_profile: { full_name: string | null; email: string | null } | null }).assigne_profile;
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
-  const refAffichee = formatRefTicket(ticket.numero, projet?.code_court);
+  const refAffichee = formatRefTicket(ticket.rang_projet, projet?.code_court);
+  const createdBy = (ticket as unknown as { created_by: string | null }).created_by;
+  const estAuteur = !!user && createdBy === user.id;
   const derniereDemande = demandes?.[0] ?? null;
   // Une fois une demande acceptée, ce ticket est remplacé par un nouveau —
   // pas la peine (et pas cohérent) de permettre une nouvelle demande dessus.
@@ -139,7 +133,7 @@ export default async function ClientTicketDetailPage({
       {/* Même layout 2 colonnes que côté admin (cf. admin/tickets/[id]) :
           cohérence des deux fiches, et ça évite pareillement d'empiler
           toutes les metadata au-dessus d'une colonne étroite. */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-6 min-w-0">
           <RefClientDisplay ticketId={ticket.id} refClient={ticket.ref_client} />
 
@@ -161,7 +155,9 @@ export default async function ClientTicketDetailPage({
             projetNom={projet?.nom ?? null}
             dateEcheance={ticket.date_prevue}
             tags={tagsActuels}
+            tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
             refAffichee={refAffichee}
+            estAuteur={estAuteur}
           />
 
           <Card>
@@ -182,58 +178,9 @@ export default async function ClientTicketDetailPage({
 
               <AttachmentsPanel ticketId={ticket.id} attachments={attachments} />
 
-              {user && (
-                <MessageThread
-                  context={{ field: "ticket_id", value: ticket.id }}
-                  messages={(messages ?? []) as unknown as MessageRow[]}
-                  currentUserId={user.id}
-                  action={postMessageClient}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Détails</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">Priorité</span>
-                <PrioriteBadge priorite={priorite} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">Statut</span>
-                <Badge variant={ticketStatutBadgeVariant(statut)} className="w-fit">
-                  {TICKET_STATUT_LABELS[statut]}
-                </Badge>
-              </div>
-
-              {assigneProfile && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs text-muted-foreground">Assigné à</span>
-                  <span className="text-sm">
-                    {assigneProfile.full_name || assigneProfile.email || "—"}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">Tags</span>
-                <TicketTagsEditor
-                  ticketId={ticket.id}
-                  tagsActuels={tagsActuels}
-                  tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
-                />
-              </div>
-
               {/* Validation client : affiché si le ticket est en attente de retour */}
               {statut === "en_attente_client" && (
                 <div className="flex flex-col gap-1.5 border-t pt-4">
-                  <span className="text-xs text-muted-foreground">Actions</span>
                   <ValidationClientPanel
                     ticketId={ticket.id}
                     demandeEnCours={derniereDemande}
@@ -244,12 +191,20 @@ export default async function ClientTicketDetailPage({
               {/* Réouverture classique : pour les tickets déjà résolus/fermés */}
               {peutDemanderReouverture && (
                 <div className="flex flex-col gap-1.5 border-t pt-4">
-                  <span className="text-xs text-muted-foreground">Actions</span>
                   <ReopenRequestButton
                     ticketId={ticket.id}
                     demandeEnCours={derniereDemande}
                   />
                 </div>
+              )}
+
+              {user && (
+                <MessageThread
+                  context={{ field: "ticket_id", value: ticket.id }}
+                  messages={(messages ?? []) as unknown as MessageRow[]}
+                  currentUserId={user.id}
+                  action={postMessageClient}
+                />
               )}
             </CardContent>
           </Card>

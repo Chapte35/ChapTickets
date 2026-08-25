@@ -283,11 +283,16 @@ export type Release = {
 };
 
 /**
- * Formate la référence affichée d'un ticket : "CHAP#32" si le projet a un
- * code court, sinon "#32". Centralisé ici pour cohérence dans toutes les
- * listes, fiches, et previews.
+ * Formate la référence affichée d'un ticket à partir de son rang au sein
+ * du projet (rang_projet, calculé par la vue tickets_avec_rang) et du code
+ * court du projet. Exemples : "CHAP#1", "CHAP#2", ou "#1" si pas de code.
+ *
+ * Le paramètre s'appelle `rang` et non `numero` pour rendre explicite que
+ * c'est le rang de présentation par projet (1, 2, 3…) et non la clé
+ * technique de la DB — évite de passer accidentellement `ticket.numero`
+ * à cet endroit.
  */
-export function formatRefTicket(numero: number, codeCourt: string | null | undefined): string {
-  if (codeCourt) return `${codeCourt}#${numero}`;
-  return `#${numero}`;
+export function formatRefTicket(rang: number, codeCourt: string | null | undefined): string {
+  if (codeCourt) return `${codeCourt}#${rang}`;
+  return `#${rang}`;
 }

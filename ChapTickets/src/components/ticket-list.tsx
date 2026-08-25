@@ -12,7 +12,7 @@ import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
 
 export type TicketRow = {
   id: string;
-  numero: number;
+  rang_projet: number;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -42,7 +42,7 @@ export function TicketList({
   return (
     <ul className="flex flex-col divide-y">
       {tickets.map((t) => {
-        const ref = formatRefTicket(t.numero, t.projets?.code_court);
+        const ref = formatRefTicket(t.rang_projet, t.projets?.code_court);
         return (
           <li key={t.id}>
             <div className="flex items-center justify-between gap-4 py-3 -mx-2 px-2">

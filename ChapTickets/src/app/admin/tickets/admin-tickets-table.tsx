@@ -38,7 +38,7 @@ import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk } from "./acti
 
 export type AdminTicketRow = {
   id: string;
-  numero: number;
+  rang_projet: number;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -52,8 +52,9 @@ function construireExtrait(tickets: AdminTicketRow[]): string {
   return tickets
     .map((t) => {
       const client = t.profiles?.full_name || t.profiles?.email || "—";
+      const ref = formatRefTicket(t.rang_projet, t.projets?.code_court);
       const lignes = [
-        `### #${t.numero} — ${t.titre}`,
+        `### ${ref} — ${t.titre}`,
         `- Projet : ${t.projets?.nom ?? "—"}`,
         `- Client : ${client}`,
         `- Priorité : ${TICKET_PRIORITE_LABELS[t.priorite]} · Statut : ${TICKET_STATUT_LABELS[t.statut]}`,
@@ -275,7 +276,7 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                 />
               </TableCell>
               <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
-                {formatRefTicket(t.numero, t.projets?.code_court)}
+                {formatRefTicket(t.rang_projet, t.projets?.code_court)}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5">

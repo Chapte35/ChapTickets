@@ -17,7 +17,6 @@ import {
 import { getAllTags } from "@/lib/queries/tags";
 import { getTousLesProfils } from "@/lib/queries/tickets";
 import { StatusUpdateForm } from "./status-update-form";
-import { PriorityUpdateForm } from "./priority-update-form";
 import { DateEcheanceForm } from "./date-echeance-form";
 import { AssigneAForm } from "./assigne-a-form";
 import {
@@ -29,7 +28,6 @@ import { MarkTicketRead } from "@/components/mark-ticket-read";
 import { BackButton } from "@/components/back-button";
 import { RefClientDisplay } from "@/components/ref-client-display";
 import { TicketDetailEditable } from "./ticket-detail-editable";
-import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { ChecklistPanel, type ChecklistItemRow } from "@/components/checklist-panel";
 import { AttachmentsPanel, type AttachmentRow } from "@/components/attachments-panel";
 import { postMessageAdmin } from "../actions";
@@ -57,9 +55,9 @@ export default async function AdminTicketDetailPage({
     profils,
   ] = await Promise.all([
     supabase
-      .from("tickets")
+      .from("tickets_avec_rang")
       .select(
-        "id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        "id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
       )
       .eq("id", id)
       .single(),
@@ -102,7 +100,7 @@ export default async function AdminTicketDetailPage({
   const priorite = ticket.priorite as TicketPriorite;
   const assigneAId = (ticket as unknown as { assigne_a: string | null }).assigne_a;
 
-  const refAffichee = formatRefTicket(ticket.numero, projet?.code_court);
+  const refAffichee = formatRefTicket(ticket.rang_projet, projet?.code_court);
 
   // Requête séparée plutôt qu'une jointure auto-référencée dans le select
   // principal (tickets -> tickets) : ce genre de self-join via PostgREST
@@ -168,6 +166,7 @@ export default async function AdminTicketDetailPage({
             clientNom={client?.full_name || client?.email || null}
             dateEcheance={ticket.date_prevue}
             tags={tagsActuels}
+            tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
             refAffichee={refAffichee}
           />
 
@@ -204,16 +203,6 @@ export default async function AdminTicketDetailPage({
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">Priorité</span>
-                <PriorityUpdateForm ticketId={ticket.id} currentPriorite={priorite} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">Statut</span>
-                <StatusUpdateForm ticketId={ticket.id} currentStatut={statut} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Assigné à</span>
                 <AssigneAForm
                   ticketId={ticket.id}
@@ -225,15 +214,6 @@ export default async function AdminTicketDetailPage({
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Échéance</span>
                 <DateEcheanceForm ticketId={ticket.id} dateActuelle={ticket.date_prevue} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">Tags</span>
-                <TicketTagsEditor
-                  ticketId={ticket.id}
-                  tagsActuels={tagsActuels}
-                  tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
-                />
               </div>
             </CardContent>
           </Card>

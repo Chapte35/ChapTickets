@@ -3,7 +3,7 @@ import type { TicketStatut, TicketPriorite } from "@/lib/types";
 
 export type TicketSummary = {
   id: string;
-  numero: number;
+  rang_projet: number;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -28,21 +28,21 @@ export type TicketAvecNonLus = {
 
 export async function getAdminDashboardData(supabase: SupabaseClient, projetId?: string) {
   let urgentsQuery = supabase
-    .from("tickets")
+    .from("tickets_avec_rang")
     .select(
-      "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+      "id, rang_projet, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
     )
     .eq("priorite", "urgente")
     .not("statut", "in", "(resolu,ferme)")
-    .order("created_at", { ascending: false })
+    .order("rang_projet", { ascending: false })
     .limit(5);
 
   let recentsQuery = supabase
-    .from("tickets")
+    .from("tickets_avec_rang")
     .select(
-      "id, numero, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+      "id, rang_projet, titre, description, statut, priorite, created_at, projets(nom), profiles:profiles!tickets_client_id_fkey(email, full_name)"
     )
-    .order("created_at", { ascending: false })
+    .order("rang_projet", { ascending: false })
     .limit(5);
 
   let projetsQuery = supabase
@@ -80,9 +80,9 @@ export async function getClientDashboardData(
   projetId?: string
 ) {
   let ticketsQuery = supabase
-    .from("tickets")
-    .select("id, numero, titre, description, statut, priorite, created_at, projets(nom)")
-    .order("created_at", { ascending: false })
+    .from("tickets_avec_rang")
+    .select("id, rang_projet, titre, description, statut, priorite, created_at, projets(nom)")
+    .order("rang_projet", { ascending: false })
     .limit(10);
 
   if (projetId) ticketsQuery = ticketsQuery.eq("projet_id", projetId);

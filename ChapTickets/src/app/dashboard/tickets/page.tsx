@@ -24,13 +24,16 @@ export default async function ClientTicketsPage({
     : "recent";
 
   let query = supabase
-    .from("tickets")
-    .select("id, numero, ref_client, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court)");
+    .from("tickets_avec_rang")
+    .select("id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court)");
 
+  // "écheance" → date_prevue, nullsFirst:false pour mettre les sans-date à la fin.
+  // "recent"/"ancien" → rang_projet DESC/ASC : les tickets les plus récents du
+  // projet (numéro le plus élevé) en premier pour "recent", ordre naturel pour "ancien".
   query =
     tri === "echeance"
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
-      : query.order("created_at", { ascending: tri === "ancien" });
+      : query.order("rang_projet", { ascending: tri === "ancien" });
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);

@@ -94,12 +94,9 @@ export async function demanderReouverture(
   });
 
   if (error) {
-    // La policy RLS refuse l'insert si le ticket n'est pas resolu/ferme ou
-    // pas visible par ce client : dans ce cas Supabase renvoie une erreur
-    // RLS générique, pas un message clair. On la reformule.
+    console.error("[demanderReouverture] Supabase error:", error);
     return {
-      error:
-        "Impossible d'envoyer la demande (le ticket n'est peut-être plus éligible à une réouverture).",
+      error: `Erreur technique : ${error.message} (code: ${error.code})`,
     };
   }
 
@@ -120,7 +117,8 @@ export async function updateTicketTitreClient(
   if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
   if (typeof valeur !== "string" || !valeur.trim()) return { error: "Le titre ne peut pas être vide." };
 
-  // La RLS client ne permet de modifier que les tickets dont il est client_id
+  // La RLS filtre sur client_projets (appartenance au projet, pas client_id).
+  // Le trigger restreindre_update_ticket_client autorise titre côté base.
   const { error } = await supabase
     .from("tickets")
     .update({ titre: valeur.trim(), updated_at: new Date().toISOString() })
@@ -149,6 +147,54 @@ export async function updateTicketDescriptionClient(
   const { error } = await supabase
     .from("tickets")
     .update({ description, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
+  revalidatePath("/dashboard/tickets");
+  return { error: null };
+}
+
+/**
+ * Mise à jour de la priorité par le client — uniquement sur les tickets
+ * qu'il a créés lui-même (created_by = userId).
+ * Double protection : vérification applicative ici + trigger DB (0021).
+ */
+export async function updateTicketPrioriteClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const ticketId = formData.get("ticket_id");
+  const priorite = formData.get("priorite");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+  if (
+    typeof priorite !== "string" ||
+    !TICKET_PRIORITES.includes(priorite as (typeof TICKET_PRIORITES)[number])
+  ) {
+    return { error: "Priorité invalide." };
+  }
+
+  // Vérification applicative : le client ne peut modifier que ses propres tickets.
+  // Le trigger 0021 est la ligne de défense DB — cette vérif applicative évite
+  // d'exposer une erreur de trigger cryptique à l'utilisateur.
+  const { data: ticket } = await supabase
+    .from("tickets")
+    .select("created_by")
+    .eq("id", ticketId)
+    .single();
+
+  if (!ticket || ticket.created_by !== userId) {
+    return { error: "Vous ne pouvez modifier la priorité que sur vos propres tickets." };
+  }
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ priorite, updated_at: new Date().toISOString() })
     .eq("id", ticketId);
 
   if (error) return { error: `Erreur : ${error.message}` };

@@ -35,8 +35,8 @@ export default async function ReleaseDetailPage({
       .eq("projet_id", projetId)
       .single(),
     supabase
-      .from("tickets")
-      .select("id, numero, titre, statut, priorite, projets(nom, code_court)")
+      .from("tickets_avec_rang")
+      .select("id, rang_projet, titre, statut, priorite, projets(nom, code_court)")
       .eq("release_id", releaseId)
       .order("created_at", { ascending: true }),
   ]);
@@ -46,7 +46,7 @@ export default async function ReleaseDetailPage({
   const projet = release.projets as unknown as { nom: string; code_court: string | null } | null;
   const ticketsList = (tickets ?? []) as unknown as Array<{
     id: string;
-    numero: number;
+    rang_projet: number;
     titre: string;
     statut: TicketStatut;
     priorite: TicketPriorite;
@@ -121,7 +121,7 @@ export default async function ReleaseDetailPage({
           ) : (
             <ul className="divide-y">
               {ticketsList.map((t) => {
-                const ref = formatRefTicket(t.numero, t.projets?.code_court ?? projet?.code_court);
+                const ref = formatRefTicket(t.rang_projet, t.projets?.code_court ?? projet?.code_court);
                 return (
                   <li key={t.id}>
                     <Link

@@ -1,25 +1,27 @@
 "use client";
 
-import { useRef, useState, useTransition, type KeyboardEvent } from "react";
+import { useRef, useState, useTransition, useEffect, type KeyboardEvent } from "react";
 import { Pencil, Check, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 type FormState = { error: string | null };
 
 /**
  * Champ click-to-edit inline avec icône crayon au hover.
- * Supporte deux modes : "input" (ligne) et "textarea" (multi-ligne).
+ * Modes :
+ *   "title"    — textarea auto-height stylée comme un titre (font-semibold),
+ *                sauvegarde sur Entrée (Shift+Entrée = saut de ligne désactivé).
+ *                Remplace l'ancien mode "input" qui était une ligne unique —
+ *                problématique sur mobile où éditer le début du titre était galère.
+ *   "textarea" — textarea multi-ligne classique, sauvegarde sur Ctrl+Entrée.
  *
  * L'action doit accepter (_prevState, formData) avec un champ "valeur"
  * et un champ "ticket_id". On passe ticketId ici pour l'injecter dans le
  * FormData sans exposer un hidden input visible dans le DOM.
  *
  * Échap → annule sans sauvegarder.
- * Pour "input" : Entrée → sauvegarde (Shift+Entrée désactivé).
- * Pour "textarea" : Ctrl+Entrée → sauvegarde.
  */
 export function InlineEditField({
   ticketId,
@@ -33,7 +35,7 @@ export function InlineEditField({
 }: {
   ticketId: string;
   valeurInitiale: string;
-  mode: "input" | "textarea";
+  mode: "title" | "textarea";
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
   className?: string;
   /** Texte affiché quand le champ est vide et qu'on survole. */
@@ -49,14 +51,32 @@ export function InlineEditField({
   const [erreur, setErreur] = useState<string | null>(null);
   const [hovered, setHovered] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize du textarea en fonction du contenu
+  function autoResize() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  useEffect(() => {
+    if (editing) {
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        // Place le curseur à la fin
+        const len = textareaRef.current?.value.length ?? 0;
+        textareaRef.current?.setSelectionRange(len, len);
+        autoResize();
+      }, 0);
+    }
+  }, [editing]);
 
   function commencerEdition() {
     setBrouillon(valeur);
     setErreur(null);
     setEditing(true);
-    // Focus au prochain tick — le champ n'est pas encore dans le DOM
-    setTimeout(() => inputRef.current?.focus(), 0);
   }
 
   function annuler() {
@@ -90,7 +110,7 @@ export function InlineEditField({
       annuler();
       return;
     }
-    if (mode === "input" && e.key === "Enter") {
+    if (mode === "title" && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sauvegarder();
       return;
@@ -104,28 +124,29 @@ export function InlineEditField({
   if (editing) {
     return (
       <div className={cn("flex flex-col gap-1.5", className)}>
-        {mode === "input" ? (
-          <Input
-            ref={inputRef as React.Ref<HTMLInputElement>}
-            value={brouillon}
-            onChange={(e) => setBrouillon(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isPending}
-            className="text-sm font-semibold"
-          />
-        ) : (
-          <Textarea
-            ref={inputRef as React.Ref<HTMLTextAreaElement>}
-            value={brouillon}
-            onChange={(e) => setBrouillon(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isPending}
-            className="text-sm min-h-24"
-            placeholder={placeholderVide}
-          />
-        )}
+        <Textarea
+          ref={textareaRef}
+          value={brouillon}
+          onChange={(e) => {
+            setBrouillon(e.target.value);
+            autoResize();
+          }}
+          onKeyDown={handleKeyDown}
+          disabled={isPending}
+          placeholder={placeholderVide}
+          rows={1}
+          className={cn(
+            "resize-none overflow-hidden",
+            mode === "title"
+              ? "text-base font-semibold leading-snug min-h-0 py-1"
+              : "text-sm min-h-24"
+          )}
+        />
         {mode === "textarea" && (
           <p className="text-xs text-muted-foreground">Ctrl+Entrée pour sauvegarder · Échap pour annuler</p>
+        )}
+        {mode === "title" && (
+          <p className="text-xs text-muted-foreground">Entrée pour sauvegarder · Échap pour annuler</p>
         )}
         {erreur && <p className="text-xs text-destructive">{erreur}</p>}
         <div className="flex gap-1.5">

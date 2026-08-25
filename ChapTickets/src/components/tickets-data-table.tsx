@@ -76,7 +76,7 @@ const columns: ColumnDef<TicketSummary>[] = [
           href={`/admin/tickets/${t.id}`}
           className="font-medium hover:underline underline-offset-2"
         >
-          <span className="text-muted-foreground font-normal">#{t.numero}</span> {t.titre}
+          <span className="text-muted-foreground font-normal">#{t.rang_projet}</span> {t.titre}
         </Link>
       );
       if (!t.description) return contenu;

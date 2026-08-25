@@ -22,7 +22,7 @@ import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
 
 export type ClientTicketRow = {
   id: string;
-  numero: number;
+  rang_projet: number;
   ref_client: string | null;
   titre: string;
   description: string | null;
@@ -59,7 +59,7 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
         {tickets.map((t) => (
           <TableRow key={t.id}>
             <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
-              {formatRefTicket(t.numero, t.projets?.code_court)}
+              {formatRefTicket(t.rang_projet, t.projets?.code_court)}
             </TableCell>
             <TableCell className="text-muted-foreground text-xs">
               {t.ref_client ?? <span className="italic">—</span>}

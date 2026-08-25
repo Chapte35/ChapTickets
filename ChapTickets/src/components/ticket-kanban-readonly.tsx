@@ -13,7 +13,7 @@ export type TicketKanbanItem = {
   titre: string;
   statut: TicketStatut;
   priorite: TicketPriorite;
-  numero?: number;
+  rang_projet?: number;
   code_court?: string | null;
 };
 
@@ -51,9 +51,9 @@ export function TicketKanbanReadonly({
                   href={`${basePath}/${t.id}`}
                   className="flex flex-col gap-1.5 rounded-md border bg-card p-2 text-xs hover:shadow-sm transition-shadow"
                 >
-                  {t.numero != null && (
+                  {t.rang_projet != null && (
                     <span className="text-[10px] text-muted-foreground font-mono">
-                      {formatRefTicket(t.numero, t.code_court)}
+                      {formatRefTicket(t.rang_projet, t.code_court)}
                     </span>
                   )}
                   <span className="font-medium leading-snug">{t.titre}</span>
