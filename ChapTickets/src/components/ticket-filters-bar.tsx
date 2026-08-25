@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
@@ -87,6 +89,7 @@ export function TicketFiltersBar({
   }, []);
 
   const filtreProjétVerrouille = projetSidebarId !== null;
+  const inclureFermes = searchParams.get("inclure_fermes") === "1";
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -95,16 +98,29 @@ export function TicketFiltersBar({
     } else {
       params.set(key, value);
     }
-    // Si un projet sidebar est actif et que ce n'est pas lui qu'on modifie,
-    // on s'assure qu'il reste dans les params (défense en profondeur au cas
-    // où le replace du montage ne serait pas encore reflété dans searchParams).
     if (projetSidebarId && key !== "projet") {
       params.set("projet", projetSidebarId);
     }
     router.push(`${pathname}?${params.toString()}`);
   }
 
-  const hasFilters = searchParams.size > 0;
+  function toggleInclureFermes(checked: boolean) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set("inclure_fermes", "1");
+    } else {
+      params.delete("inclure_fermes");
+    }
+    if (projetSidebarId) params.set("projet", projetSidebarId);
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  // hasFilters ignore inclure_fermes pour ne pas afficher "Réinitialiser"
+  // juste parce que la checkbox est cochée — ce n'est pas vraiment un filtre
+  // restrictif, c'est une extension de la liste.
+  const paramsHorsFermes = new URLSearchParams(searchParams.toString());
+  paramsHorsFermes.delete("inclure_fermes");
+  const hasFilters = paramsHorsFermes.size > 0;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -220,17 +236,30 @@ export function TicketFiltersBar({
         </SelectContent>
       </Select>
 
+      {/* Checkbox inclure fermés/résolus — masqués par défaut */}
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="inclure-fermes"
+          checked={inclureFermes}
+          onCheckedChange={(v) => toggleInclureFermes(v === true)}
+        />
+        <Label htmlFor="inclure-fermes" className="text-sm cursor-pointer select-none">
+          Afficher les fermés
+        </Label>
+      </div>
+
       {hasFilters && (
         <Button
           variant="ghost"
           size="sm"
           onClick={() => {
             // On réinitialise tous les filtres sauf le projet sidebar s'il est actif
-            if (projetSidebarId) {
-              router.push(`${pathname}?projet=${projetSidebarId}`);
-            } else {
-              router.push(pathname);
-            }
+            // et on conserve l'état de la checkbox inclure_fermes
+            const params = new URLSearchParams();
+            if (projetSidebarId) params.set("projet", projetSidebarId);
+            if (inclureFermes) params.set("inclure_fermes", "1");
+            const url = params.size > 0 ? `${pathname}?${params.toString()}` : pathname;
+            router.push(url);
           }}
         >
           Réinitialiser

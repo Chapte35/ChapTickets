@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +38,7 @@ import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk } from "./acti
 export type AdminTicketRow = {
   id: string;
   rang_projet: number;
+  ref_client?: string | null;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -60,7 +60,6 @@ function construireExtrait(tickets: AdminTicketRow[]): string {
         `- Priorité : ${TICKET_PRIORITE_LABELS[t.priorite]} · Statut : ${TICKET_STATUT_LABELS[t.statut]}`,
         `- Créé le : ${new Date(t.created_at).toLocaleDateString("fr-FR")}`,
       ];
-      if (t.description) lignes.push("", t.description);
       return lignes.join("\n");
     })
     .join("\n\n---\n\n");
@@ -102,8 +101,6 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
       setDrag((prev) => {
         if (prev) {
           const rect = { ...prev, x2: e.clientX, y2: e.clientY };
-          // Un simple clic (quasi pas de déplacement) ne doit pas vider la
-          // sélection existante — seul un vrai glisser déclenche le lasso.
           const distance = Math.hypot(rect.x2 - rect.x1, rect.y2 - rect.y1);
           if (distance > 4) {
             setSelection(computeIntersection(rect));
@@ -122,8 +119,6 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
 
   function handleMouseDown(e: React.MouseEvent) {
     const cible = e.target as HTMLElement;
-    // Ne pas démarrer un lasso si le clic vise un élément interactif (lien,
-    // case à cocher, bouton) — sinon impossible de cliquer normalement.
     if (cible.closest("a, button, input, [role='checkbox']")) return;
     draggingRef.current = true;
     setDrag({ x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY });
@@ -190,6 +185,13 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
     router.refresh();
   }
 
+  // Clic sur une ligne : navigue sauf si une sélection est active
+  // (évite les navigations accidentelles pendant le travail de sélection).
+  function handleRowClick(id: string) {
+    if (selection.size > 0) return;
+    router.push(`/admin/tickets/${id}`);
+  }
+
   if (tickets.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6">
@@ -242,6 +244,7 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
       <Table>
         <TableHeader>
           <TableRow>
+            {/* Checkbox — colonne isolée, ne déclenche pas la navigation */}
             <TableHead className="w-8">
               <Checkbox
                 checked={selection.size === tickets.length ? true : selection.size > 0 ? "indeterminate" : false}
@@ -249,13 +252,15 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                 aria-label="Tout sélectionner"
               />
             </TableHead>
-            <TableHead className="w-14">#</TableHead>
+            <TableHead className="w-32">Réf. client</TableHead>
+            <TableHead className="w-28">#</TableHead>
+            <TableHead className="w-24">Priorité</TableHead>
+            <TableHead className="w-36">Statut</TableHead>
             <TableHead>Titre</TableHead>
             <TableHead>Projet</TableHead>
             <TableHead>Client</TableHead>
-            <TableHead>Priorité</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead className="w-10" />
+            {/* Colonne Actions (preview + delete) — isolée, ne déclenche pas la navigation */}
+            <TableHead className="w-16" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -267,34 +272,22 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                 else rowRefs.current.delete(t.id);
               }}
               data-state={selection.has(t.id) ? "selected" : undefined}
+              className="cursor-pointer"
+              onClick={() => handleRowClick(t.id)}
             >
-              <TableCell>
+              {/* Checkbox — stopPropagation */}
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox
                   checked={selection.has(t.id)}
                   onCheckedChange={(v) => toggleRow(t.id, v === true)}
                   aria-label={`Sélectionner ${t.titre}`}
                 />
               </TableCell>
+              <TableCell className="text-muted-foreground text-xs">
+                {t.ref_client ? t.ref_client : <span className="italic text-muted-foreground/50">—</span>}
+              </TableCell>
               <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
                 {formatRefTicket(t.rang_projet, t.projets?.code_court)}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5">
-                  <Link href={`/admin/tickets/${t.id}`} className="font-medium hover:underline underline-offset-2">
-                    {t.titre}
-                  </Link>
-                  <TicketPreviewPopover
-                    ticketId={t.id}
-                    titre={t.titre}
-                    statut={t.statut}
-                    priorite={t.priorite}
-                    description={t.description}
-                  />
-                </div>
-              </TableCell>
-              <TableCell className="text-muted-foreground">{t.projets?.nom ?? "—"}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {t.profiles?.full_name || t.profiles?.email || "—"}
               </TableCell>
               <TableCell>
                 <PrioriteBadge priorite={t.priorite} />
@@ -304,8 +297,23 @@ export function AdminTicketsTable({ tickets }: { tickets: AdminTicketRow[] }) {
                   {TICKET_STATUT_LABELS[t.statut]}
                 </Badge>
               </TableCell>
-              <TableCell>
-                <ConfirmDeleteButton onConfirm={() => handleDeleteOne(t.id)} />
+              <TableCell className="font-medium">{t.titre}</TableCell>
+              <TableCell className="text-muted-foreground">{t.projets?.nom ?? "—"}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {t.profiles?.full_name || t.profiles?.email || "—"}
+              </TableCell>
+              {/* Actions (preview + delete) regroupées — stopPropagation */}
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1">
+                  <TicketPreviewPopover
+                    ticketId={t.id}
+                    titre={t.titre}
+                    statut={t.statut}
+                    priorite={t.priorite}
+                    description={t.description}
+                  />
+                  <ConfirmDeleteButton onConfirm={() => handleDeleteOne(t.id)} />
+                </div>
               </TableCell>
             </TableRow>
           ))}

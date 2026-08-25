@@ -21,7 +21,7 @@ export default async function AdminTicketsPage({
   let query = supabase
     .from("tickets_avec_rang")
     .select(
-      "id, rang_projet, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+      "id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
     );
 
   // "écheance" → date_prevue, nullsFirst:false pour mettre les sans-date à la fin.
@@ -36,6 +36,8 @@ export default async function AdminTicketsPage({
   if (params.priorite) query = query.eq("priorite", params.priorite);
   if (params.projet) query = query.eq("projet_id", params.projet);
   if (params.client) query = query.eq("client_id", params.client);
+  // Par défaut on masque les tickets fermés et résolus — param inclure_fermes=1 pour les voir
+  if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
   const [{ data: tickets, error }, projets, { data: clients }] =
     await Promise.all([

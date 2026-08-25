@@ -38,6 +38,8 @@ export default async function ClientTicketsPage({
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);
   if (params.projet) query = query.eq("projet_id", params.projet);
+  // Par défaut on masque les tickets fermés et résolus — param inclure_fermes=1 pour les voir
+  if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
   const [{ data: tickets, error }, projets] = await Promise.all([
     query,
