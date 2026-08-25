@@ -72,7 +72,7 @@ export default async function AdminHomePage({
 
   const releasesAvecProgression = calculerProgressionReleases(
     releases,
-    (tousLesTickets ?? []) as unknown as { id: string; statut: string; release_id: string | null }[]
+    (tousLesTickets ?? []) as unknown as import("@/lib/queries/releases").TicketPourRelease[]
   );
 
   const projetActif = projetId

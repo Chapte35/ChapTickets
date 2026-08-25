@@ -549,14 +549,13 @@ export async function updateTicketsAssigneBulk(
   const { supabase, isAdmin } = await requireAdmin();
   if (!isAdmin) return { maj: 0, echecs: ticketIds.length };
 
-  const { error, count } = await supabase
+  const { error } = await supabase
     .from("tickets")
     .update({ assigne_a: assigneA, updated_at: new Date().toISOString() })
-    .in("id", ticketIds)
-    .select("id", { count: "exact", head: true });
+    .in("id", ticketIds);
 
   if (error) return { maj: 0, echecs: ticketIds.length };
 
   revalidatePath("/admin/tickets");
-  return { maj: count ?? ticketIds.length, echecs: 0 };
+  return { maj: ticketIds.length, echecs: 0 };
 }

@@ -138,12 +138,12 @@ function ZoneRelease({
 
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Nom</Label>
-            <Input size="sm" name="nom" placeholder="v1.2.0" required />
+            <Input name="nom" placeholder="v1.2.0" required />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Date de release</Label>
-            <Input size="sm" name="date" type="date" required />
+            <Input name="date" type="date" required />
           </div>
 
           <div className="flex flex-col gap-1.5">
