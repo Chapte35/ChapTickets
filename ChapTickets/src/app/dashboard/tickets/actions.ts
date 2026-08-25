@@ -19,6 +19,11 @@ export async function createTicketClient(
   const projetId = formData.get("projet_id");
   const priorite = formData.get("priorite");
   const refClient = formData.get("ref_client");
+  const typeTicketRaw = formData.get("type_ticket");
+  const typeTicket =
+    typeof typeTicketRaw === "string" && typeTicketRaw.trim()
+      ? typeTicketRaw.trim()
+      : null;
 
   if (typeof titre !== "string" || !titre.trim()) {
     return { error: "Titre requis." };
@@ -46,6 +51,7 @@ export async function createTicketClient(
       created_by: userId,
       priorite,
       ref_client: typeof refClient === "string" && refClient.trim() ? refClient.trim() : null,
+      type_ticket: typeTicket,
     })
     .select("id")
     .single();

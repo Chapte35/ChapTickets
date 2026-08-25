@@ -21,7 +21,7 @@ export default async function AdminTicketsPage({
   let query = supabase
     .from("tickets_avec_rang")
     .select(
-      "id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+      "id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
     );
 
   // "écheance" → date_prevue, nullsFirst:false pour mettre les sans-date à la fin.

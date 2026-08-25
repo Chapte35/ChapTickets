@@ -57,7 +57,7 @@ export default async function AdminTicketDetailPage({
     supabase
       .from("tickets_avec_rang")
       .select(
-        "id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
+        "id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name)"
       )
       .eq("id", id)
       .single(),
@@ -180,6 +180,7 @@ export default async function AdminTicketDetailPage({
             refAffichee={refAffichee}
             clientsDuProjet={clientsDuProjet}
             clientIdActuel={(ticket as unknown as { client_id: string | null }).client_id}
+            typeActuel={(ticket as unknown as { type_ticket: string | null }).type_ticket as import("@/lib/types").TicketType | null}
           />
 
           <Card>

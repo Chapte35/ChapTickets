@@ -26,6 +26,10 @@ import {
   TICKET_STATUTS,
   TICKET_STATUT_LABELS,
   TICKET_PRIORITE_LABELS,
+  TICKET_TYPES,
+  TICKET_TYPE_LABELS,
+  
+  type TicketType,
   ticketStatutBadgeVariant,
   formatRefTicket,
   type TicketStatut,
@@ -33,12 +37,14 @@ import {
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
-import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk, updateTicketsAssigneBulk } from "./actions";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
+import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk, updateTicketsAssigneBulk, updateTicketsTypeBulk } from "./actions";
 
 export type AdminTicketRow = {
   id: string;
   rang_projet: number;
   ref_client?: string | null;
+  type_ticket?: string | null;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -146,6 +152,9 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
   const NON_ASSIGNE = "__aucun__";
   const [assigneMasse, setAssigneMasse] = useState<string>("");
   const [applyingAssigne, setApplyingAssigne] = useState(false);
+  const AUCUN_TYPE = "__aucun_type__";
+  const [typeMasse, setTypeMasse] = useState<string>("");
+  const [applyingType, setApplyingType] = useState(false);
 
   async function handleExtraire() {
     const texte = construireExtrait(ticketsSelectionnes);
@@ -201,6 +210,20 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
     if (maj > 0) toast.success(`${maj} ticket${maj > 1 ? "s" : ""} assigné${maj > 1 ? "s" : ""}.`);
     if (echecs > 0) toast.error(`${echecs} assignation(s) ont échoué.`);
     setAssigneMasse("");
+    setSelection(new Set());
+    router.refresh();
+  }
+
+  async function handleApplyTypeMasse() {
+    if (!typeMasse) return;
+    setApplyingType(true);
+    const ids = [...selection];
+    const valeur = typeMasse === AUCUN_TYPE ? null : typeMasse;
+    const { maj, echecs } = await updateTicketsTypeBulk(ids, valeur);
+    setApplyingType(false);
+    if (maj > 0) toast.success(`${maj} ticket${maj > 1 ? "s" : ""} mis à jour.`);
+    if (echecs > 0) toast.error(`${echecs} mise(s) à jour ont échoué.`);
+    setTypeMasse("");
     setSelection(new Set());
     router.refresh();
   }
@@ -271,6 +294,27 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
           >
             {applyingAssigne ? "..." : "Assigner"}
           </Button>
+          <Select value={typeMasse} onValueChange={setTypeMasse}>
+            <SelectTrigger size="sm" className="w-[180px]">
+              <SelectValue placeholder="Changer le type..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={AUCUN_TYPE}>— Retirer le type</SelectItem>
+              {TICKET_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  <span className="flex items-center gap-1.5"><TicketTypeBadge type={t} variant="icon" />{TICKET_TYPE_LABELS[t]}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!typeMasse || applyingType}
+            onClick={handleApplyTypeMasse}
+          >
+            {applyingType ? "..." : "Typer"}
+          </Button>
           <ConfirmDeleteButton
             size="text"
             label={`Supprimer (${selection.size})`}
@@ -295,6 +339,7 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
             </TableHead>
             <TableHead className="w-32">Réf. client</TableHead>
             <TableHead className="w-28">#</TableHead>
+            <TableHead className="w-8" />
             <TableHead className="w-24">Priorité</TableHead>
             <TableHead className="w-36">Statut</TableHead>
             <TableHead>Titre</TableHead>
@@ -330,6 +375,11 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
               </TableCell>
               <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
                 {formatRefTicket(t.rang_projet, t.projets?.code_court)}
+              </TableCell>
+              <TableCell>
+                {t.type_ticket && (
+                  <TicketTypeBadge type={t.type_ticket as import("@/lib/types").TicketType} variant="icon" />
+                )}
               </TableCell>
               <TableCell>
                 <PrioriteBadge priorite={t.priorite} />

@@ -19,11 +19,13 @@ import {
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
 
 export type ClientTicketRow = {
   id: string;
   rang_projet: number;
   ref_client: string | null;
+  type_ticket?: string | null;
   titre: string;
   description: string | null;
   statut: TicketStatut;
@@ -50,6 +52,7 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
         <TableRow>
           <TableHead className="w-32">Réf. client</TableHead>
           <TableHead className="w-28">Réf. interne</TableHead>
+          <TableHead className="w-8" />
           <TableHead className="w-24">Priorité</TableHead>
           <TableHead className="w-36">Statut</TableHead>
           <TableHead>Titre</TableHead>
@@ -71,6 +74,11 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
             </TableCell>
             <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
               {formatRefTicket(t.rang_projet, t.projets?.code_court)}
+            </TableCell>
+            <TableCell>
+              {t.type_ticket && (
+                <TicketTypeBadge type={t.type_ticket as import("@/lib/types").TicketType} variant="icon" />
+              )}
             </TableCell>
             <TableCell>
               <PrioriteBadge priorite={t.priorite} />

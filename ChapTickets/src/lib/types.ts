@@ -282,6 +282,35 @@ export type Release = {
   description: string | null;
 };
 
+export type TicketType =
+  | "epic"
+  | "feature_fonctionnelle"
+  | "feature_technique"
+  | "bug"
+  | "etude";
+
+export const TICKET_TYPES: readonly TicketType[] = [
+  "epic",
+  "feature_fonctionnelle",
+  "feature_technique",
+  "bug",
+  "etude",
+] as const;
+
+export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
+  epic: "Epic",
+  feature_fonctionnelle: "Feature fonctionnelle",
+  feature_technique: "Feature technique",
+  bug: "Bug",
+  etude: "Étude",
+};
+
+/**
+ * Le composant TicketTypeBadge (@/components/ticket-type-badge) résout
+ * le type vers son icône Lucide — les icônes ne sont pas exportées ici
+ * comme strings car ça ne fonctionne pas dans les SelectItem (rendu texte).
+ */
+
 /**
  * Formate la référence affichée d'un ticket à partir de son rang au sein
  * du projet (rang_projet, calculé par la vue tickets_avec_rang) et du code

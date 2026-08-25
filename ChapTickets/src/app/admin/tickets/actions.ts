@@ -37,6 +37,11 @@ export async function createTicketAdmin(
   }
 
   const dateEcheance = formData.get("date_prevue");
+  const typeTicketRaw = formData.get("type_ticket");
+  const typeTicket =
+    typeof typeTicketRaw === "string" && typeTicketRaw.trim()
+      ? typeTicketRaw.trim()
+      : null;
 
   const { data: ticket, error } = await supabase
     .from("tickets")
@@ -48,6 +53,7 @@ export async function createTicketAdmin(
       priorite,
       created_by: userId,
       date_prevue: typeof dateEcheance === "string" && dateEcheance ? dateEcheance : null,
+      type_ticket: typeTicket,
     })
     .select("id")
     .single();
@@ -552,6 +558,53 @@ export async function updateTicketsAssigneBulk(
   const { error } = await supabase
     .from("tickets")
     .update({ assigne_a: assigneA, updated_at: new Date().toISOString() })
+    .in("id", ticketIds);
+
+  if (error) return { maj: 0, echecs: ticketIds.length };
+
+  revalidatePath("/admin/tickets");
+  return { maj: ticketIds.length, echecs: 0 };
+}
+
+export async function updateTicketType(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const ticketId = formData.get("ticket_id");
+  const typeRaw = formData.get("type_ticket");
+
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+
+  const type =
+    typeof typeRaw === "string" && typeRaw && typeRaw !== "__aucun__"
+      ? typeRaw
+      : null;
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ type_ticket: type, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath("/admin/tickets");
+  return { error: null };
+}
+
+export async function updateTicketsTypeBulk(
+  ticketIds: string[],
+  type: string | null
+): Promise<{ maj: number; echecs: number }> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { maj: 0, echecs: ticketIds.length };
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ type_ticket: type, updated_at: new Date().toISOString() })
     .in("id", ticketIds);
 
   if (error) return { maj: 0, echecs: ticketIds.length };

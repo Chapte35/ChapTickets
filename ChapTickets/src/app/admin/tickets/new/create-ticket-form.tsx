@@ -15,16 +15,22 @@ import {
 import {
   TICKET_PRIORITES,
   TICKET_PRIORITE_LABELS,
+  TICKET_TYPES,
+  TICKET_TYPE_LABELS,
+  
   type TicketPriorite,
+  type TicketType,
   type Tag,
   tagsVisiblesPourProjet,
 } from "@/lib/types";
 import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
 import { TagPicker } from "@/components/tag-picker";
 import { TicketPreviewCard } from "@/components/ticket-preview-card";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { createTicketAdmin, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
+const AUCUN_TYPE = "__aucun__";
 
 export function CreateTicketAdminForm({
   projets,
@@ -40,14 +46,10 @@ export function CreateTicketAdminForm({
     initialState
   );
 
-  // Tous les champs sont contrôlés : c'est ce qui permet à l'aperçu à
-  // droite de refléter la saisie en temps réel (mode "visualisation"
-  // demandé). Avant, seuls projetId/clientId l'étaient (nécessaire pour
-  // le cascading select) — le reste passait en non-contrôlé directement
-  // au form action.
   const [titre, setTitre] = useState("");
   const [description, setDescription] = useState("");
   const [priorite, setPriorite] = useState<TicketPriorite>("normale");
+  const [typeTicket, setTypeTicket] = useState<TicketType | "">("");
   const [dateEcheance, setDateEcheance] = useState("");
   const [tagsSelectionnes, setTagsSelectionnes] = useState<Tag[]>([]);
   const [projetId, setProjetId] = useState<string>("");
@@ -69,8 +71,8 @@ export function CreateTicketAdminForm({
 
   function handleProjetChange(value: string) {
     setProjetId(value);
-    setClientId(""); // le client dépend du projet, on réinitialise
-    setTagsSelectionnes([]); // idem pour les tags (certains sont exclusifs à un projet)
+    setClientId("");
+    setTagsSelectionnes([]);
   }
 
   return (
@@ -124,9 +126,7 @@ export function CreateTicketAdminForm({
           >
             <SelectTrigger className="w-full">
               <SelectValue
-                placeholder={
-                  projetId ? "Choisir un client" : "Choisis d'abord un projet"
-                }
+                placeholder={projetId ? "Choisir un client" : "Choisis d'abord un projet"}
               />
             </SelectTrigger>
             <SelectContent>
@@ -163,6 +163,31 @@ export function CreateTicketAdminForm({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label>
+            Type{" "}
+            <span className="text-muted-foreground font-normal">(optionnel)</span>
+          </Label>
+          <Select
+            value={typeTicket || AUCUN_TYPE}
+            onValueChange={(v) => setTypeTicket(v === AUCUN_TYPE ? "" : v as TicketType)}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Aucun type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={AUCUN_TYPE}>— Aucun type</SelectItem>
+              {TICKET_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  <span className="flex items-center gap-1.5"><TicketTypeBadge type={t} variant="icon" />{TICKET_TYPE_LABELS[t]}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* hidden input : vide si pas de type → null côté action */}
+          <input type="hidden" name="type_ticket" value={typeTicket} />
         </div>
 
         <div className="flex flex-col gap-2">

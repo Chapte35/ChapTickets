@@ -5,9 +5,11 @@ import { InlineEditField } from "@/components/inline-edit-field";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { PriorityUpdateForm } from "./priority-update-form";
 import { StatusUpdateForm } from "./status-update-form";
+import { TypeUpdateForm } from "./type-update-form";
 import {
   type TicketPriorite,
   type TicketStatut,
+  type TicketType,
   type Tag,
 } from "@/lib/types";
 import type { ClientOption } from "@/lib/queries/tickets";
@@ -32,6 +34,7 @@ export function TicketDetailEditable({
   refAffichee,
   clientsDuProjet,
   clientIdActuel,
+  typeActuel,
 }: {
   ticketId: string;
   titre: string;
@@ -48,6 +51,7 @@ export function TicketDetailEditable({
   clientsDuProjet: ClientOption[];
   /** client_id du ticket — pré-sélectionné dans la modal. */
   clientIdActuel: string | null;
+  typeActuel: TicketType | null;
 }) {
   return (
     <Card>
@@ -118,6 +122,12 @@ export function TicketDetailEditable({
             clientsDuProjet={clientsDuProjet}
             clientIdActuel={clientIdActuel}
           />
+        </div>
+
+        {/* Type */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">Type</span>
+          <TypeUpdateForm ticketId={ticketId} currentType={typeActuel} />
         </div>
 
         {dateEcheance && (

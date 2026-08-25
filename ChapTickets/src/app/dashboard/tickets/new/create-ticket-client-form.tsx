@@ -15,13 +15,18 @@ import {
 import {
   TICKET_PRIORITES,
   TICKET_PRIORITE_LABELS,
+  TICKET_TYPES,
+  TICKET_TYPE_LABELS,
+  
   type TicketPriorite,
+  type TicketType,
   type Tag,
   tagsVisiblesPourProjet,
 } from "@/lib/types";
 import type { ProjetOption } from "@/lib/queries/tickets";
 import { TagPicker } from "@/components/tag-picker";
 import { TicketPreviewCard } from "@/components/ticket-preview-card";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { createTicketClient, type FormState } from "../actions";
 
 const initialState: FormState = { error: null };
@@ -43,8 +48,11 @@ export function CreateTicketClientForm({
   const [titre, setTitre] = useState("");
   const [description, setDescription] = useState("");
   const [priorite, setPriorite] = useState<TicketPriorite>("normale");
+  const [typeTicket, setTypeTicket] = useState<TicketType | "">("");
   const [tagsSelectionnes, setTagsSelectionnes] = useState<Tag[]>([]);
   const [projetId, setProjetId] = useState<string>("");
+
+  const AUCUN_TYPE = "__aucun__";
 
   const projetNom = useMemo(
     () => projets.find((p) => p.id === projetId)?.nom ?? null,
@@ -130,6 +138,30 @@ export function CreateTicketClientForm({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label>
+            Type{" "}
+            <span className="text-muted-foreground font-normal">(optionnel)</span>
+          </Label>
+          <Select
+            value={typeTicket || AUCUN_TYPE}
+            onValueChange={(v) => setTypeTicket(v === AUCUN_TYPE ? "" : v as TicketType)}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Aucun type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={AUCUN_TYPE}>— Aucun type</SelectItem>
+              {TICKET_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  <span className="flex items-center gap-1.5"><TicketTypeBadge type={t} variant="icon" />{TICKET_TYPE_LABELS[t]}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <input type="hidden" name="type_ticket" value={typeTicket} />
         </div>
 
         <div className="flex flex-col gap-2">
