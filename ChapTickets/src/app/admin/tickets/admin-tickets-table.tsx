@@ -52,6 +52,7 @@ export type AdminTicketRow = {
   created_at: string;
   projets: { nom: string; code_court?: string | null } | null;
   profiles: { email: string | null; full_name: string | null } | null;
+  assigne_profile?: { full_name: string | null; email: string | null } | null;
 };
 
 type ProfilOption = { id: string; full_name: string | null; email: string | null };
@@ -345,12 +346,13 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
             </TableHead>
             <TableHead className="w-32">Réf. client</TableHead>
             <TableHead className="w-28">#</TableHead>
-            <TableHead className="w-8" />
+            <TableHead className="w-8">Type</TableHead>
             <TableHead className="w-24">Priorité</TableHead>
             <TableHead className="w-36">Statut</TableHead>
             <TableHead>Titre</TableHead>
             <TableHead>Projet</TableHead>
-            <TableHead>Client</TableHead>
+            <TableHead>Créé par</TableHead>
+            <TableHead>Assigné</TableHead>
             {/* Colonne Actions (preview + delete) — isolée, ne déclenche pas la navigation */}
             <TableHead className="w-16" />
           </TableRow>
@@ -399,6 +401,9 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
               <TableCell className="text-muted-foreground">{t.projets?.nom ?? "—"}</TableCell>
               <TableCell className="text-muted-foreground">
                 {t.profiles?.full_name || t.profiles?.email || "—"}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {t.assigne_profile?.full_name || t.assigne_profile?.email || <span className="italic opacity-50">—</span>}
               </TableCell>
               {/* Actions (preview + delete) regroupées — stopPropagation */}
               <TableCell onClick={(e) => e.stopPropagation()}>

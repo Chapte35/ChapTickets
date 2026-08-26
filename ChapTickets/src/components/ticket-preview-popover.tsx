@@ -1,24 +1,25 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Eye, Paperclip, CheckSquare, UserCheck } from "lucide-react";
+import { Eye, Paperclip, CheckSquare, UserCheck, MessageCircle, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { PrioriteBadge } from "@/components/priorite-badge";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import {
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
   type TicketStatut,
   type TicketPriorite,
+  type TicketType,
 } from "@/lib/types";
-import { initiales } from "@/lib/initiales";
+import { TAG_COLOR_CLASSES, type Tag } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
 type ChecklistItem = { id: string; contenu: string; complete: boolean };
@@ -30,6 +31,14 @@ type PreviewData = {
   checklist: ChecklistItem[];
   attachments: Attachment[];
   assigne: Assigne;
+  createur: Assigne;
+  typeTicket: string | null;
+  refClient: string | null;
+  nbMessages: number;
+  tags: Tag[];
+  dateEcheance: string | null;
+  nbRelations: number;
+  aDemandeReouverture: boolean;
 };
 
 /**
@@ -142,6 +151,10 @@ export function TicketPreviewPopover({
       { data: checklist },
       { data: attachments },
       { data: ticketDetail },
+      { count: nbMessages },
+      { data: tagsRows },
+      { count: nbRelations },
+      { count: nbDemandes },
     ] = await Promise.all([
       supabase
         .from("ticket_checklist_items")
@@ -156,16 +169,50 @@ export function TicketPreviewPopover({
         .order("created_at", { ascending: false }),
       supabase
         .from("tickets")
-        .select("assigne_a, profiles:profiles!tickets_assigne_a_fkey(full_name, email)")
+        .select("assigne_a, created_by, type_ticket, ref_client, date_prevue, assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email, pseudo)")
         .eq("id", ticketId)
         .single(),
+      supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("ticket_id", ticketId),
+      supabase
+        .from("ticket_tags")
+        .select("tags(id, nom, couleur, projet_id)")
+        .eq("ticket_id", ticketId),
+      supabase
+        .from("ticket_relations")
+        .select("id", { count: "exact", head: true })
+        .eq("ticket_id", ticketId),
+      supabase
+        .from("demandes_reouverture")
+        .select("id", { count: "exact", head: true })
+        .eq("ticket_id", ticketId)
+        .eq("statut", "en_attente"),
     ]);
+
+    // Fetch créateur séparément
+    const createdBy = (ticketDetail as unknown as { created_by: string | null })?.created_by;
+    let createurProfil: Assigne = null;
+    if (createdBy) {
+      const { data: cp } = await supabase.from("profiles").select("full_name, email, pseudo").eq("id", createdBy).single();
+      createurProfil = cp ? { full_name: (cp as unknown as { pseudo: string | null }).pseudo || cp.full_name, email: cp.email } : null;
+    }
+    const assigneProfil = (ticketDetail as unknown as { assigne_profile: { full_name: string | null; email: string | null; pseudo: string | null } | null })?.assigne_profile;
 
     setData({
       description: descriptionInitiale,
       checklist: (checklist ?? []) as ChecklistItem[],
       attachments: (attachments ?? []) as Attachment[],
-      assigne: (ticketDetail?.profiles as unknown as Assigne) ?? null,
+      assigne: assigneProfil ? { full_name: assigneProfil.pseudo || assigneProfil.full_name, email: assigneProfil.email } : null,
+      createur: createurProfil,
+      typeTicket: (ticketDetail as unknown as { type_ticket: string | null })?.type_ticket ?? null,
+      refClient: (ticketDetail as unknown as { ref_client: string | null })?.ref_client ?? null,
+      nbMessages: nbMessages ?? 0,
+      tags: (tagsRows ?? []).map((r) => r.tags as unknown as Tag).filter(Boolean),
+      dateEcheance: (ticketDetail as unknown as { date_prevue: string | null })?.date_prevue ?? null,
+      nbRelations: nbRelations ?? 0,
+      aDemandeReouverture: (nbDemandes ?? 0) > 0,
     });
     setLoading(false);
   }
@@ -195,9 +242,17 @@ export function TicketPreviewPopover({
   const checklist = data?.checklist ?? [];
   const attachments = data?.attachments ?? [];
   const total = checklist.length;
+  const nbMessages = data?.nbMessages ?? 0;
+  const tags = data?.tags ?? [];
+  const dateEcheance = data?.dateEcheance ?? null;
+  const nbRelations = data?.nbRelations ?? 0;
+  const aDemandeReouverture = data?.aDemandeReouverture ?? false;
   const faites = checklist.filter((i) => i.complete).length;
   const pct = total > 0 ? Math.round((faites / total) * 100) : 0;
   const assigneNom = data?.assigne?.full_name || data?.assigne?.email || null;
+  const createurNom = data?.createur?.full_name || data?.createur?.email || null;
+  const typeTicket = data?.typeTicket ?? null;
+  const refClient = data?.refClient ?? null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -243,7 +298,13 @@ export function TicketPreviewPopover({
             <Badge variant={ticketStatutBadgeVariant(statut)} className="text-xs">
               {TICKET_STATUT_LABELS[statut]}
             </Badge>
+            {typeTicket && (
+              <TicketTypeBadge type={typeTicket as TicketType} variant="icon" />
+            )}
           </div>
+          {refClient && (
+            <p className="text-xs text-muted-foreground font-mono">Réf. client : {refClient}</p>
+          )}
         </div>
 
         {loading && (
@@ -262,15 +323,21 @@ export function TicketPreviewPopover({
               )}
             </div>
 
-            {assigneNom && (
-              <div className="px-3 py-2.5 flex items-center gap-2">
+            {createurNom && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5">
                 <UserCheck className="size-3 text-muted-foreground shrink-0" />
-                <Avatar size="sm">
-                  <AvatarFallback className="text-[10px]">
-                    {initiales(assigneNom)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground truncate">{assigneNom}</span>
+                <span className="text-xs text-muted-foreground">
+                  Créé par : <span className="text-foreground">{createurNom}</span>
+                </span>
+              </div>
+            )}
+
+            {assigneNom && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5">
+                <UserCheck className="size-3 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground">
+                  Assigné à : <span className="text-foreground">{assigneNom}</span>
+                </span>
               </div>
             )}
 
@@ -312,6 +379,53 @@ export function TicketPreviewPopover({
                     <li className="text-xs text-muted-foreground">+ {attachments.length - 3} autres…</li>
                   )}
                 </ul>
+              </div>
+            )}
+
+            {nbMessages > 0 && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5">
+                <MessageCircle className="size-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {nbMessages} message{nbMessages > 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+
+            {tags.length > 0 && (
+              <div className="px-3 py-2.5 flex flex-wrap gap-1">
+                {tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${TAG_COLOR_CLASSES[tag.couleur]}`}
+                  >
+                    {tag.nom}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {dateEcheance && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">
+                  Échéance : {new Date(dateEcheance).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              </div>
+            )}
+
+            {nbRelations > 0 && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5">
+                <Link2 className="size-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {nbRelations} relation{nbRelations > 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+
+            {aDemandeReouverture && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5 border-t bg-amber-500/10">
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠ Demande de réouverture en attente
+                </span>
               </div>
             )}
           </div>

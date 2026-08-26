@@ -52,7 +52,7 @@ export default async function ClientTicketDetailPage({
     supabase
       .from("tickets_avec_rang")
       .select(
-        "id, rang_projet, ref_client, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, created_by, projets(nom, code_court)"
+        "id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, created_by, projets(nom, code_court), assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email)"
       )
       .eq("id", id)
       .single(),
@@ -64,7 +64,7 @@ export default async function ClientTicketDetailPage({
       .limit(1),
     supabase
       .from("messages")
-      .select("id, contenu, created_at, auteur_id, profiles!messages_auteur_id_fkey(role, full_name, email)")
+      .select("id, contenu, created_at, auteur_id")
       .eq("ticket_id", id)
       .order("created_at", { ascending: true }),
     supabase.from("ticket_tags").select("tags(id, nom, couleur, projet_id)").eq("ticket_id", id),
@@ -88,12 +88,46 @@ export default async function ClientTicketDetailPage({
 
   if (error || !ticket) notFound();
 
+  const auteurIds = [...new Set((messages ?? []).map((m) => (m as unknown as { auteur_id: string }).auteur_id).filter(Boolean))];
+  console.log("[DEBUG messages client] auteurIds:", auteurIds);
+  const { data: auteurProfils } = auteurIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, role, pseudo, full_name, email, avatar_couleur, initiales")
+        .in("id", auteurIds)
+    : { data: [] };
+  console.log("[DEBUG messages client] auteurProfils:", auteurProfils);
+  const auteurMap = new Map((auteurProfils ?? []).map((p) => [p.id, p]));
+  const messagesAvecProfils = (messages ?? []).map((m) => {
+    const msg = m as unknown as { id: string; contenu: string; created_at: string; auteur_id: string };
+    const profil = auteurMap.get(msg.auteur_id) ?? null;
+    return {
+      id: msg.id,
+      contenu: msg.contenu,
+      created_at: msg.created_at,
+      auteur_id: msg.auteur_id,
+      profiles: profil ? {
+        id: profil.id,
+        role: profil.role,
+        pseudo: (profil as unknown as { pseudo: string | null }).pseudo ?? null,
+        full_name: profil.full_name,
+        email: profil.email,
+        avatar_couleur: (profil as unknown as { avatar_couleur: string | null }).avatar_couleur ?? null,
+        initiales: (profil as unknown as { initiales: string | null }).initiales ?? null,
+      } : null,
+    };
+  });
+  console.log("[DEBUG messages client] messagesAvecProfils[0]:", messagesAvecProfils[0]);
+
   const projet = ticket.projets as unknown as { nom: string; code_court: string | null } | null;
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
   const refAffichee = formatRefTicket(ticket.rang_projet, projet?.code_court);
   const createdBy = (ticket as unknown as { created_by: string | null }).created_by;
   const estAuteur = !!user && createdBy === user.id;
+  const typeTicket = (ticket as unknown as { type_ticket: string | null }).type_ticket as import("@/lib/types").TicketType | null;
+  const assigneProfile = (ticket as unknown as { assigne_profile: { full_name: string | null; email: string | null } | null }).assigne_profile;
+  const assigneNom = assigneProfile?.full_name || assigneProfile?.email || null;
 
   const relationsFormatees: TicketRelation[] = (relationsRows ?? []).map((r) => {
     const t = r.tickets_avec_rang as unknown as {
@@ -182,6 +216,8 @@ export default async function ClientTicketDetailPage({
             tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
             refAffichee={refAffichee}
             estAuteur={estAuteur}
+            typeTicket={typeTicket}
+            assigneNom={assigneNom}
           />
 
           <Card>
@@ -225,7 +261,7 @@ export default async function ClientTicketDetailPage({
               {user && (
                 <MessageThread
                   context={{ field: "ticket_id", value: ticket.id }}
-                  messages={(messages ?? []) as unknown as MessageRow[]}
+                  messages={messagesAvecProfils as unknown as MessageRow[]}
                   currentUserId={user.id}
                   action={postMessageClient}
                 />

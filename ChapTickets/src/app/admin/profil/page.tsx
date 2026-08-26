@@ -1,18 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfilForm } from "@/components/profil-form";
-import type { TagColor } from "@/lib/types";
+import type { AvatarCouleur } from "@/components/avatar";
 
 export default async function AdminProfilPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null; // le layout redirige déjà, filet de sécurité
+  if (!user) return null;
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, email, pseudo, avatar_couleur, avatar_emoji")
+    .select("full_name, email, pseudo, avatar_couleur, initiales")
     .eq("id", user.id)
     .single();
 
@@ -21,14 +21,15 @@ export default async function AdminProfilPage() {
       <h1 className="text-lg font-semibold">Profil</h1>
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Pseudo & avatar</CardTitle>
+          <CardTitle className="text-sm">Identité & avatar</CardTitle>
         </CardHeader>
         <CardContent>
           <ProfilForm
-            nomAffiche={profile?.full_name || profile?.email || "Admin"}
+            nomAffiche={profile?.pseudo || profile?.full_name || profile?.email || "Admin"}
             pseudoActuel={profile?.pseudo ?? null}
-            couleurActuelle={(profile?.avatar_couleur as TagColor | null) ?? null}
-            emojiActuel={profile?.avatar_emoji ?? null}
+            couleurActuelle={(profile?.avatar_couleur as AvatarCouleur | null) ?? null}
+            initialesActuelles={(profile as unknown as { initiales: string | null })?.initiales ?? null}
+            email={profile?.email ?? null}
           />
         </CardContent>
       </Card>

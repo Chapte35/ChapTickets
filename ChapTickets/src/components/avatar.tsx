@@ -1,35 +1,37 @@
 import { cn } from "@/lib/utils";
-import type { TagColor } from "@/lib/types";
 
-const PALETTE = [
-  "bg-red-500",
-  "bg-orange-500",
-  "bg-amber-500",
-  "bg-green-500",
-  "bg-teal-500",
-  "bg-blue-500",
-  "bg-indigo-500",
-  "bg-purple-500",
-  "bg-pink-500",
-];
+/**
+ * Palette avatar style GitHub — tons sourds, bien contrastés en dark/light.
+ * Fond légèrement teinté + texte coloré (pas de fond plein criard).
+ * Chaque couleur a : bg (fond), text (texte), ring (bordure outline).
+ */
+export const AVATAR_COULEURS = [
+  "slate",
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "cyan",
+  "blue",
+  "violet",
+  "pink",
+] as const;
 
-// Couleurs "pleines" (bg-xxx-500) correspondant à chaque TagColor, pour
-// l'avatar personnalisé — TAG_COLOR_CLASSES (dans lib/types) est pensé pour
-// des badges (fond translucide + texte coloré), pas pour un rond plein
-// avec des initiales blanches dessus, d'où cette map séparée mais sur la
-// même liste de couleurs (garde la personnalisation d'avatar cohérente
-// avec la palette de tags existante plutôt que d'en introduire une 2e).
-const COULEUR_PLEINE: Record<TagColor, string> = {
-  red: "bg-red-500",
-  orange: "bg-orange-500",
-  amber: "bg-amber-500",
-  green: "bg-green-500",
-  teal: "bg-teal-500",
-  blue: "bg-blue-500",
-  indigo: "bg-indigo-500",
-  purple: "bg-purple-500",
-  pink: "bg-pink-500",
-  gray: "bg-gray-500",
+export type AvatarCouleur = (typeof AVATAR_COULEURS)[number];
+
+// Classes Tailwind littérales — JIT exige les noms complets dans le source.
+export const AVATAR_COULEUR_CLASSES: Record<AvatarCouleur, string> = {
+  slate:  "bg-slate-100  text-slate-700  ring-slate-400  dark:bg-slate-800  dark:text-slate-300  dark:ring-slate-500",
+  red:    "bg-red-100    text-red-700    ring-red-400    dark:bg-red-900/40  dark:text-red-300    dark:ring-red-500",
+  orange: "bg-orange-100 text-orange-700 ring-orange-400 dark:bg-orange-900/40 dark:text-orange-300 dark:ring-orange-500",
+  amber:  "bg-amber-100  text-amber-700  ring-amber-400  dark:bg-amber-900/40  dark:text-amber-300  dark:ring-amber-500",
+  green:  "bg-green-100  text-green-700  ring-green-400  dark:bg-green-900/40  dark:text-green-300  dark:ring-green-500",
+  teal:   "bg-teal-100   text-teal-700   ring-teal-400   dark:bg-teal-900/40   dark:text-teal-300   dark:ring-teal-500",
+  cyan:   "bg-cyan-100   text-cyan-700   ring-cyan-400   dark:bg-cyan-900/40   dark:text-cyan-300   dark:ring-cyan-500",
+  blue:   "bg-blue-100   text-blue-700   ring-blue-400   dark:bg-blue-900/40   dark:text-blue-300   dark:ring-blue-500",
+  violet: "bg-violet-100 text-violet-700 ring-violet-400 dark:bg-violet-900/40 dark:text-violet-300 dark:ring-violet-500",
+  pink:   "bg-pink-100   text-pink-700   ring-pink-400   dark:bg-pink-900/40   dark:text-pink-300   dark:ring-pink-500",
 };
 
 function hashToIndex(str: string, mod: number) {
@@ -38,7 +40,7 @@ function hashToIndex(str: string, mod: number) {
   return Math.abs(hash) % mod;
 }
 
-function initiales(nom: string) {
+function initialesDepuisNom(nom: string): string {
   const mots = nom.trim().split(/\s+/);
   if (mots.length === 1) return mots[0].slice(0, 2).toUpperCase();
   return (mots[0][0] + mots[mots.length - 1][0]).toUpperCase();
@@ -49,28 +51,35 @@ export function Avatar({
   size = "sm",
   className,
   couleur,
-  emoji,
+  initiales,
 }: {
   nom: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   className?: string;
-  /** Couleur choisie dans l'onglet profil — si absente, couleur générée par hash du nom (comportement historique, utilisé pour tout le monde sauf soi-même tant que les autres pages n'exposent pas encore ces champs). */
-  couleur?: TagColor | null;
-  /** Emoji choisi dans l'onglet profil — remplace les initiales si présent. */
-  emoji?: string | null;
+  /** Couleur choisie dans le profil. Si absente : générée par hash du nom. */
+  couleur?: AvatarCouleur | null;
+  /** Initiales choisies dans le profil. Si absentes : calculées depuis le nom. */
+  initiales?: string | null;
 }) {
-  const fond = couleur ? COULEUR_PLEINE[couleur] : PALETTE[hashToIndex(nom, PALETTE.length)];
+  const couleurResolue: AvatarCouleur = couleur
+    ?? AVATAR_COULEURS[hashToIndex(nom, AVATAR_COULEURS.length)];
+
+  const classes = AVATAR_COULEUR_CLASSES[couleurResolue];
+  const texte = initiales?.trim().toUpperCase().slice(0, 3) || initialesDepuisNom(nom);
+
   return (
     <span
       title={nom}
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-medium text-white shrink-0",
-        fond,
-        size === "sm" ? "size-6 text-[10px]" : "size-8 text-xs",
+        "inline-flex items-center justify-center rounded-full font-semibold shrink-0 ring-1",
+        classes,
+        size === "sm"  ? "size-6 text-[10px]" :
+        size === "md"  ? "size-8 text-xs" :
+                         "size-10 text-sm",
         className
       )}
     >
-      {emoji || initiales(nom)}
+      {texte}
     </span>
   );
 }

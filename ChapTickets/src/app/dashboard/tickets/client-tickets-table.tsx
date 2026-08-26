@@ -16,10 +16,12 @@ import {
   formatRefTicket,
   type TicketStatut,
   type TicketPriorite,
+  type TicketType,
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
-import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
+import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
+import { Avatar, type AvatarCouleur } from "@/components/avatar";
 
 export type ClientTicketRow = {
   id: string;
@@ -32,6 +34,12 @@ export type ClientTicketRow = {
   priorite: TicketPriorite;
   created_at: string;
   projets: { nom: string; code_court?: string | null } | null;
+  createur_nom?: string | null;
+  createur_couleur?: string | null;
+  createur_initiales?: string | null;
+  assigne_nom?: string | null;
+  assigne_couleur?: string | null;
+  assigne_initiales?: string | null;
 };
 
 export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) {
@@ -52,12 +60,13 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
         <TableRow>
           <TableHead className="w-32">Réf. client</TableHead>
           <TableHead className="w-28">Réf. interne</TableHead>
-          <TableHead className="w-8" />
+          <TableHead className="w-8">Type</TableHead>
           <TableHead className="w-24">Priorité</TableHead>
           <TableHead className="w-36">Statut</TableHead>
           <TableHead>Titre</TableHead>
+          <TableHead className="w-10">Créé par</TableHead>
+          <TableHead className="w-10">Assigné</TableHead>
           <TableHead className="w-24">Créé le</TableHead>
-          {/* Colonne Actions — isolée, ne déclenche pas la navigation */}
           <TableHead className="w-10" />
         </TableRow>
       </TableHeader>
@@ -77,7 +86,7 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
             </TableCell>
             <TableCell>
               {t.type_ticket && (
-                <TicketTypeBadge type={t.type_ticket as import("@/lib/types").TicketType} variant="icon" />
+                <TicketTypeBadge type={t.type_ticket as TicketType} variant="icon" />
               )}
             </TableCell>
             <TableCell>
@@ -88,8 +97,26 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
                 {TICKET_STATUT_LABELS[t.statut]}
               </Badge>
             </TableCell>
-            <TableCell className="font-medium">
-              {t.titre}
+            <TableCell className="font-medium">{t.titre}</TableCell>
+            <TableCell className="w-10">
+              {t.createur_nom ? (
+                <Avatar
+                  nom={t.createur_nom}
+                  size="sm"
+                  couleur={(t.createur_couleur as AvatarCouleur | null) ?? null}
+                  initiales={t.createur_initiales ?? null}
+                />
+              ) : <span className="italic text-muted-foreground/50 text-xs">—</span>}
+            </TableCell>
+            <TableCell className="w-10">
+              {t.assigne_nom ? (
+                <Avatar
+                  nom={t.assigne_nom}
+                  size="sm"
+                  couleur={(t.assigne_couleur as AvatarCouleur | null) ?? null}
+                  initiales={t.assigne_initiales ?? null}
+                />
+              ) : <span className="italic text-muted-foreground/50 text-xs">—</span>}
             </TableCell>
             <TableCell className="text-muted-foreground text-xs tabular-nums">
               {new Date(t.created_at).toLocaleDateString("fr-FR", {
@@ -98,7 +125,6 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
                 year: "2-digit",
               })}
             </TableCell>
-            {/* Actions — stopPropagation pour ne pas naviguer au clic */}
             <TableCell onClick={(e) => e.stopPropagation()}>
               <TicketPreviewPopover
                 ticketId={t.id}

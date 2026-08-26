@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { Avatar, type AvatarCouleur } from "@/components/avatar";
 
 export type MessageFormState = { error: string | null };
 
@@ -14,8 +15,11 @@ export type MessageRow = {
   auteur_id: string;
   profiles: {
     role: "admin" | "client";
+    pseudo: string | null;
     full_name: string | null;
     email: string | null;
+    avatar_couleur?: string | null;
+    initiales?: string | null;
   } | null;
 };
 
@@ -110,28 +114,40 @@ export function MessageBubbleList({
         return (
           <li
             key={m.id}
-            className={cn("flex flex-col gap-1", isMine ? "items-end" : "items-start")}
+            className={cn("flex gap-2 items-end", isMine ? "flex-row-reverse" : "flex-row")}
           >
-            <div
-              className={cn(
-                "max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
-                isMine
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground"
-              )}
-            >
-              {m.contenu}
+            {/* Avatar de l'auteur */}
+            <Avatar
+              nom={m.profiles?.pseudo || m.profiles?.full_name || m.profiles?.email || (isAdmin ? "Admin" : "Client")}
+              size="sm"
+              couleur={(m.profiles?.avatar_couleur as AvatarCouleur | null) ?? null}
+              initiales={m.profiles?.initiales ?? null}
+            />
+
+            <div className="flex flex-col gap-1 max-w-[75%]" style={{ alignItems: isMine ? "flex-end" : "flex-start" }}>
+              <div
+                className={cn(
+                  "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                  isMine
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground"
+                )}
+              >
+                {m.contenu}
+              </div>
+              <span className="text-xs text-muted-foreground px-1">
+                {isAdmin
+                  ? `Admin : ${m.profiles?.pseudo || m.profiles?.full_name || m.profiles?.email || "Admin"}`
+                  : `Client : ${m.profiles?.pseudo || m.profiles?.full_name || m.profiles?.email || "Client"}`}
+                {" · "}
+                {new Date(m.created_at).toLocaleString("fr-FR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
             </div>
-            <span className="text-xs text-muted-foreground px-1">
-              {isAdmin ? "Admin" : m.profiles?.full_name || m.profiles?.email || "Client"}
-              {" · "}
-              {new Date(m.created_at).toLocaleString("fr-FR", {
-                day: "2-digit",
-                month: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
           </li>
         );
       })}

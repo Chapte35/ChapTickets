@@ -73,7 +73,7 @@ export default async function AdminTicketDetailPage({
       .order("created_at", { ascending: false }),
     supabase
       .from("messages")
-      .select("id, contenu, created_at, auteur_id, profiles!messages_auteur_id_fkey(role, full_name, email)")
+      .select("id, contenu, created_at, auteur_id")
       .eq("ticket_id", id)
       .order("created_at", { ascending: true }),
     supabase.from("ticket_tags").select("tags(id, nom, couleur, projet_id)").eq("ticket_id", id),
@@ -97,6 +97,39 @@ export default async function AdminTicketDetailPage({
   ]);
 
   if (error || !ticket) notFound();
+
+  // Enrichit les messages avec les profils — query séparée pour éviter
+  // le problème de nom de FK ambigu (auteur_id → profiles) avec PostgREST.
+  const auteurIds = [...new Set((messages ?? []).map((m) => (m as unknown as { auteur_id: string }).auteur_id).filter(Boolean))];
+  console.log("[DEBUG messages] auteurIds:", auteurIds);
+  const { data: auteurProfils } = auteurIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, role, pseudo, full_name, email, avatar_couleur, initiales")
+        .in("id", auteurIds)
+    : { data: [] };
+  console.log("[DEBUG messages] auteurProfils:", auteurProfils);
+  const auteurMap = new Map((auteurProfils ?? []).map((p) => [p.id, p]));
+  const messagesAvecProfils = (messages ?? []).map((m) => {
+    const msg = m as unknown as { id: string; contenu: string; created_at: string; auteur_id: string };
+    const profil = auteurMap.get(msg.auteur_id) ?? null;
+    return {
+      id: msg.id,
+      contenu: msg.contenu,
+      created_at: msg.created_at,
+      auteur_id: msg.auteur_id,
+      profiles: profil ? {
+        id: profil.id,
+        role: profil.role,
+        pseudo: (profil as unknown as { pseudo: string | null }).pseudo ?? null,
+        full_name: profil.full_name,
+        email: profil.email,
+        avatar_couleur: (profil as unknown as { avatar_couleur: string | null }).avatar_couleur ?? null,
+        initiales: (profil as unknown as { initiales: string | null }).initiales ?? null,
+      } : null,
+    };
+  });
+  console.log("[DEBUG messages] messagesAvecProfils[0]:", messagesAvecProfils[0]);
 
   // Clients rattachés au projet — fetchés après avoir le ticket pour avoir projet_id
   const { data: clientsDuProjetRows } = await supabase
@@ -224,7 +257,7 @@ export default async function AdminTicketDetailPage({
               {user && (
                 <MessageThread
                   context={{ field: "ticket_id", value: ticket.id }}
-                  messages={(messages ?? []) as unknown as MessageRow[]}
+                  messages={messagesAvecProfils as unknown as MessageRow[]}
                   currentUserId={user.id}
                   action={postMessageAdmin}
                 />

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { InlineEditField } from "@/components/inline-edit-field";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
   TICKET_PRIORITE_LABELS,
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
+  TICKET_TYPE_LABELS,
   type TicketPriorite,
   type TicketStatut,
   type TicketType,
@@ -98,6 +100,8 @@ export function TicketDetailEditableClient({
   tousLesTags,
   refAffichee,
   estAuteur,
+  typeTicket,
+  assigneNom,
 }: {
   ticketId: string;
   titre: string;
@@ -111,6 +115,8 @@ export function TicketDetailEditableClient({
   refAffichee?: string;
   /** True si auth.uid() === created_by — autorise la modification de priorité. */
   estAuteur: boolean;
+  typeTicket?: TicketType | null;
+  assigneNom?: string | null;
 }) {
   return (
     <Card>
@@ -182,6 +188,22 @@ export function TicketDetailEditableClient({
             {TICKET_STATUT_LABELS[statut]}
           </Badge>
         </div>
+
+        {/* Type — lecture seule */}
+        {typeTicket && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Type</span>
+            <TicketTypeBadge type={typeTicket} variant="full" />
+          </div>
+        )}
+
+        {/* Assigné — lecture seule */}
+        {assigneNom && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Assigné à</span>
+            <span className="text-sm">{assigneNom}</span>
+          </div>
+        )}
 
         {dateEcheance && (
           <p className="text-xs text-muted-foreground">
