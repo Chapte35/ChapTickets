@@ -334,7 +334,7 @@ export async function traiterDemandeReouverture(
   formData: FormData
 ): Promise<FormState> {
   const { supabase, isAdmin, userId } = await requireAdmin();
-  if (!isAdmin || !userId) return { error: "Action réservée à l'admin." };
+  if (!isAdmin || !userId) return { error: "Action réservée à l\'admin." };
 
   const demandeId = formData.get("demande_id");
   const ticketId = formData.get("ticket_id");
@@ -351,30 +351,47 @@ export async function traiterDemandeReouverture(
   let nouveauTicketId: string | null = null;
 
   if (decision === "acceptee") {
-    // On récupère les infos nécessaires pour cloner un nouveau ticket —
-    // l'original reste tel quel (résolu/fermé), c'est le nouveau qui
-    // devient "ouvert". Ça garantit qu'un ticket n'a jamais qu'une seule
-    // date de création, donc jamais qu'une seule release possible.
-    const { data: original, error: fetchError } = await supabase
-      .from("tickets")
-      .select("titre, description, projet_id, client_id, priorite, created_by")
-      .eq("id", ticketId)
-      .single();
+    const [{ data: original, error: fetchError }, { data: demande }] = await Promise.all([
+      supabase
+        .from("tickets")
+        .select("titre, description, projet_id, client_id, priorite, created_by, type_ticket, ref_client")
+        .eq("id", ticketId)
+        .single(),
+      supabase
+        .from("demandes_reouverture")
+        .select("message")
+        .eq("id", demandeId)
+        .single(),
+    ]);
 
     if (fetchError || !original) {
-      return { error: "Ticket d'origine introuvable." };
+      return { error: "Ticket d\'origine introuvable." };
     }
+
+    const { data: tagsOrigin } = await supabase
+      .from("ticket_tags")
+      .select("tag_id")
+      .eq("ticket_id", ticketId);
+
+    const commentaireDemande = demande?.message ?? null;
+    const descriptionComplete = [
+      original.description,
+      commentaireDemande
+        ? `\n---\n**Commentaire de réouverture :** ${commentaireDemande}`
+        : null,
+    ].filter(Boolean).join("\n");
 
     const { data: nouveau, error: creationError } = await supabase
       .from("tickets")
       .insert({
         titre: original.titre,
-        description: original.description,
+        description: descriptionComplete || null,
         projet_id: original.projet_id,
         client_id: original.client_id,
         priorite: original.priorite,
+        type_ticket: (original as unknown as { type_ticket: string | null }).type_ticket,
+        ref_client: (original as unknown as { ref_client: string | null }).ref_client,
         created_by: userId,
-        // Le nouveau ticket repart vers le dev (created_by de l'original ou l'admin courant)
         assigne_a: original.created_by ?? userId,
         statut: "ouvert",
         ticket_origine_id: ticketId,
@@ -387,6 +404,51 @@ export async function traiterDemandeReouverture(
     }
 
     nouveauTicketId = nouveau.id;
+
+    if (tagsOrigin && tagsOrigin.length > 0) {
+      await supabase.from("ticket_tags").insert(
+        tagsOrigin.map((t) => ({ ticket_id: nouveauTicketId!, tag_id: t.tag_id }))
+      );
+    }
+
+    await supabase
+      .from("tickets")
+      .update({ statut: "ferme", updated_at: new Date().toISOString() })
+      .eq("id", ticketId);
+
+    await supabase.from("ticket_relations").insert({
+      ticket_id: ticketId,
+      ticket_cible_id: nouveauTicketId,
+      type: "en_relation_avec",
+      created_by: userId,
+    });
+
+    await logHistorique(supabase, {
+      ticketId,
+      champ: "statut",
+      ancienneValeur: "resolu",
+      nouvelleValeur: commentaireDemande
+        ? `ferme — Réouverture acceptée. Commentaire : ${commentaireDemande}`
+        : "ferme — Réouverture acceptée",
+      changedBy: userId,
+    });
+
+    await logHistorique(supabase, {
+      ticketId: nouveauTicketId,
+      champ: "statut",
+      ancienneValeur: null,
+      nouvelleValeur: commentaireDemande
+        ? `ouvert — Créé suite à réouverture. Commentaire : ${commentaireDemande}`
+        : "ouvert — Créé suite à réouverture",
+      changedBy: userId,
+    });
+
+    await supabase.from("ticket_statut_historique").insert({
+      ticket_id: ticketId,
+      ancien_statut: "resolu",
+      nouveau_statut: "ferme",
+      changed_by: userId,
+    });
   }
 
   const { error: demandeError } = await supabase
@@ -408,6 +470,7 @@ export async function traiterDemandeReouverture(
   revalidatePath("/admin/tickets");
   return { error: null };
 }
+
 
 export async function updateDateEcheance(
   _prevState: FormState,
