@@ -434,7 +434,7 @@ export async function traiterDemandeReouverture(
     });
 
     await logHistorique(supabase, {
-      ticketId: nouveauTicketId,
+      ticketId: nouveauTicketId!,
       champ: "statut",
       ancienneValeur: null,
       nouvelleValeur: commentaireDemande
