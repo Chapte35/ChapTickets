@@ -27,13 +27,13 @@ export default async function ClientTicketsPage({
     .from("tickets_avec_rang")
     .select("id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, projets(nom, code_court)");
 
-  // "écheance" → date_prevue, nullsFirst:false pour mettre les sans-date à la fin.
-  // "recent"/"ancien" → rang_projet DESC/ASC : les tickets les plus récents du
-  // projet (numéro le plus élevé) en premier pour "recent", ordre naturel pour "ancien".
+  // On trie par `numero` (clé technique croissante) et non `rang_projet`
+  // (rang calculé dans la vue qui peut varier selon le filtre projet actif).
+  // rang_projet sert à l'affichage, numero à l'ordre de création réel.
   query =
     tri === "echeance"
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
-      : query.order("rang_projet", { ascending: tri === "ancien" });
+      : query.order("numero", { ascending: tri === "ancien" });
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);

@@ -6,6 +6,7 @@ import { InlineEditField } from "@/components/inline-edit-field";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -16,8 +17,11 @@ import {
 import {
   TICKET_PRIORITES,
   TICKET_PRIORITE_LABELS,
+  TICKET_STATUT_LABELS,
+  ticketStatutBadgeVariant,
   type TicketPriorite,
   type TicketStatut,
+  type TicketType,
   type Tag,
 } from "@/lib/types";
 import { useToastOnSuccess } from "@/hooks/use-toast-on-success";
@@ -87,7 +91,7 @@ export function TicketDetailEditableClient({
   titre,
   description,
   priorite,
-  statut: _statut,
+  statut,
   projetNom,
   dateEcheance,
   tags,
@@ -169,6 +173,14 @@ export function TicketDetailEditableClient({
           ) : (
             <PrioriteBadge priorite={priorite} />
           )}
+        </div>
+
+        {/* Statut — lecture seule côté client */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">Statut</span>
+          <Badge variant={ticketStatutBadgeVariant(statut)} className="w-fit">
+            {TICKET_STATUT_LABELS[statut]}
+          </Badge>
         </div>
 
         {dateEcheance && (

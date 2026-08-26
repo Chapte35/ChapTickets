@@ -61,13 +61,19 @@ function construireExtrait(tickets: AdminTicketRow[]): string {
     .map((t) => {
       const client = t.profiles?.full_name || t.profiles?.email || "—";
       const ref = formatRefTicket(t.rang_projet, t.projets?.code_court);
+      const type = t.type_ticket ? TICKET_TYPE_LABELS[t.type_ticket as import("@/lib/types").TicketType] : null;
+
       const lignes = [
         `### ${ref} — ${t.titre}`,
         `- Projet : ${t.projets?.nom ?? "—"}`,
         `- Client : ${client}`,
         `- Priorité : ${TICKET_PRIORITE_LABELS[t.priorite]} · Statut : ${TICKET_STATUT_LABELS[t.statut]}`,
+        type ? `- Type : ${type}` : null,
+        t.ref_client ? `- Réf. client : ${t.ref_client}` : null,
         `- Créé le : ${new Date(t.created_at).toLocaleDateString("fr-FR")}`,
-      ];
+        t.description ? `\n${t.description}` : null,
+      ].filter(Boolean);
+
       return lignes.join("\n");
     })
     .join("\n\n---\n\n");

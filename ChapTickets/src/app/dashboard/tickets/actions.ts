@@ -95,6 +95,8 @@ export async function demanderReouverture(
     return { error: "Ticket invalide." };
   }
 
+  // Insère la demande AVANT de changer le statut — la policy RLS vérifie
+  // que le ticket est en en_attente_client au moment de l'insert.
   const { error } = await supabase.from("demandes_reouverture").insert({
     ticket_id: ticketId,
     demande_par: userId,
@@ -108,7 +110,38 @@ export async function demanderReouverture(
     };
   }
 
+  // Repasse le ticket en "ouvert" après l'insert de la demande
+  const { error: updateError } = await supabase
+    .from("tickets")
+    .update({ statut: "ouvert", updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (updateError) {
+    return { error: `Erreur : ${updateError.message}` };
+  }
+
+  // Log dans les deux tables d'historique
+  await supabase.from("ticket_statut_historique").insert({
+    ticket_id: ticketId,
+    ancien_statut: "en_attente_client",
+    nouveau_statut: "ouvert",
+    changed_by: userId,
+  });
+
+  const { logHistorique } = await import("@/lib/historique");
+  const texteMessage = typeof message === "string" && message.trim() ? message.trim() : null;
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "statut",
+    ancienneValeur: "en_attente_client",
+    nouvelleValeur: texteMessage
+      ? `ouvert — Bug persistant : ${texteMessage}`
+      : "ouvert — Bug persistant signalé",
+    changedBy: userId,
+  });
+
   revalidatePath(`/dashboard/tickets/${ticketId}`);
+  revalidatePath("/dashboard/tickets");
   return { error: null };
 }
 
@@ -255,12 +288,36 @@ export async function validerTicketClient(
 
   if (updateError) return { error: `Erreur : ${updateError.message}` };
 
-  // Historique du changement de statut
+  // Historique dans les deux tables — ticket_statut_historique pour le
+  // calendrier, ticket_historique pour la timeline de la fiche.
   await supabase.from("ticket_statut_historique").insert({
     ticket_id: ticketId,
     ancien_statut: "en_attente_client",
     nouveau_statut: "resolu",
     changed_by: userId,
+  });
+
+  // Import dynamique pour éviter une dépendance circulaire potentielle
+  const { logHistorique } = await import("@/lib/historique");
+
+  // Récupère le pseudo du client pour un message d'historique explicite
+  const { data: profil } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", userId)
+    .single();
+  const pseudo = profil?.full_name || profil?.email || "Client";
+  const texteCommentaire = typeof commentaire === "string" ? commentaire.trim() : "";
+  const valeurLog = texteCommentaire
+    ? `Résolu — Validé par ${pseudo}, Commentaire : ${texteCommentaire}`
+    : `Résolu — Validé par ${pseudo}`;
+
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "statut",
+    ancienneValeur: "en_attente_client",
+    nouvelleValeur: valeurLog,
+    changedBy: userId,
   });
 
   // Commentaire optionnel posté dans le thread
