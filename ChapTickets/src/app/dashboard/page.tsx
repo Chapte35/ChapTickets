@@ -12,7 +12,7 @@ import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
 import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
 import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
 import { TicketKanbanReadonly } from "@/components/ticket-kanban-readonly";
-import { ReleaseProgressList } from "@/components/release-progress-list";
+import { ClientReleasesView } from "./releases/client-releases-view";
 import { TicketList } from "@/components/ticket-list";
 import { getProjetOverviewData } from "@/lib/queries/overview";
 import { getClientDashboardData } from "@/lib/queries/dashboard";
@@ -58,6 +58,36 @@ export default async function ClientDashboardPage({
     }
 
     const { projet, stats, kanbanItems, releasesAvecProgression } = result;
+
+    // Fetch les tickets par release pour ClientReleasesView avec accordéon
+    const releaseIds = releasesAvecProgression.map((r) => r.id);
+    const { data: ticketsParRelease } = releaseIds.length > 0
+      ? await supabase
+          .from("tickets_avec_rang")
+          .select("id, rang_projet, titre, description, statut, priorite, type_ticket, release_id, projets(code_court)")
+          .in("release_id", releaseIds)
+          .order("rang_projet", { ascending: true })
+      : { data: [] };
+
+    const ticketsMap = new Map<string, typeof ticketsParRelease>();
+    for (const t of ticketsParRelease ?? []) {
+      const rid = (t as unknown as { release_id: string }).release_id;
+      if (!ticketsMap.has(rid)) ticketsMap.set(rid, []);
+      ticketsMap.get(rid)!.push(t);
+    }
+
+    const releasesForView = [{
+      id: projet.id,
+      nom: projet.nom,
+      releases: releasesAvecProgression.map((r) => ({
+        id: r.id,
+        projet_id: projet.id,
+        nom: r.nom,
+        date: r.date,
+        description: r.description ?? null,
+        tickets: (ticketsMap.get(r.id) ?? []) as unknown as import("./releases/page").TicketDeLaRelease[],
+      })),
+    }];
 
     return (
       <div className="flex flex-col gap-4">
@@ -132,14 +162,9 @@ export default async function ClientDashboardPage({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Releases</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ReleaseProgressList releases={releasesAvecProgression} />
-          </CardContent>
-        </Card>
+        <div>
+          <ClientReleasesView projets={releasesForView} />
+        </div>
       </div>
     );
   }

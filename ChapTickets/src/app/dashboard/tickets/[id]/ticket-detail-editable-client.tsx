@@ -102,6 +102,7 @@ export function TicketDetailEditableClient({
   estAuteur,
   typeTicket,
   assigneNom,
+  releaseNom,
 }: {
   ticketId: string;
   titre: string;
@@ -117,6 +118,7 @@ export function TicketDetailEditableClient({
   estAuteur: boolean;
   typeTicket?: TicketType | null;
   assigneNom?: string | null;
+  releaseNom?: string | null;
 }) {
   return (
     <Card>
@@ -202,6 +204,13 @@ export function TicketDetailEditableClient({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground">Assigné à</span>
             <span className="text-sm">{assigneNom}</span>
+          </div>
+        )}
+
+        {releaseNom && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Version</span>
+            <span className="text-sm">{releaseNom}</span>
           </div>
         )}
 

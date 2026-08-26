@@ -39,6 +39,7 @@ type PreviewData = {
   dateEcheance: string | null;
   nbRelations: number;
   aDemandeReouverture: boolean;
+  releaseNom: string | null;
 };
 
 /**
@@ -169,7 +170,7 @@ export function TicketPreviewPopover({
         .order("created_at", { ascending: false }),
       supabase
         .from("tickets")
-        .select("assigne_a, created_by, type_ticket, ref_client, date_prevue, assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email, pseudo)")
+        .select("assigne_a, created_by, type_ticket, ref_client, date_prevue, release_id, assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email, pseudo)")
         .eq("id", ticketId)
         .single(),
       supabase
@@ -200,6 +201,14 @@ export function TicketPreviewPopover({
     }
     const assigneProfil = (ticketDetail as unknown as { assigne_profile: { full_name: string | null; email: string | null; pseudo: string | null } | null })?.assigne_profile;
 
+    // Fetch nom de la release si applicable
+    const releaseId = (ticketDetail as unknown as { release_id: string | null })?.release_id;
+    let releaseNom: string | null = null;
+    if (releaseId) {
+      const { data: rel } = await supabase.from("releases").select("nom, date").eq("id", releaseId).single();
+      if (rel) releaseNom = `${rel.nom} (${new Date(rel.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })})`;
+    }
+
     setData({
       description: descriptionInitiale,
       checklist: (checklist ?? []) as ChecklistItem[],
@@ -213,6 +222,7 @@ export function TicketPreviewPopover({
       dateEcheance: (ticketDetail as unknown as { date_prevue: string | null })?.date_prevue ?? null,
       nbRelations: nbRelations ?? 0,
       aDemandeReouverture: (nbDemandes ?? 0) > 0,
+      releaseNom,
     });
     setLoading(false);
   }
@@ -247,6 +257,7 @@ export function TicketPreviewPopover({
   const dateEcheance = data?.dateEcheance ?? null;
   const nbRelations = data?.nbRelations ?? 0;
   const aDemandeReouverture = data?.aDemandeReouverture ?? false;
+  const releaseNom = data?.releaseNom ?? null;
   const faites = checklist.filter((i) => i.complete).length;
   const pct = total > 0 ? Math.round((faites / total) * 100) : 0;
   const assigneNom = data?.assigne?.full_name || data?.assigne?.email || null;
@@ -408,6 +419,14 @@ export function TicketPreviewPopover({
               <div className="px-3 py-2.5 flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">
                   Échéance : {new Date(dateEcheance).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              </div>
+            )}
+
+            {releaseNom && (
+              <div className="px-3 py-2.5 flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">
+                  Version : <span className="text-foreground">{releaseNom}</span>
                 </span>
               </div>
             )}

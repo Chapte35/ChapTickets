@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -58,7 +58,7 @@ export function StatusUpdateForm({
   useToastOnSuccess(isPending, state.error, "Statut mis à jour.");
   useToastOnSuccess(assignationPending, assignationState.error, "Statut et assignation mis à jour.");
 
-  // Statut sélectionné en local — on intercepte avant de soumettre
+  const [, startTransition] = useTransition();
   const [statutChoisi, setStatutChoisi] = useState<TicketStatut>(currentStatut);
   const [modalOuverte, setModalOuverte] = useState(false);
   const [clientChoisi, setClientChoisi] = useState<string>(clientIdActuel ?? NON_ASSIGNE);
@@ -69,15 +69,13 @@ export function StatusUpdateForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Si l'admin passe en en_attente_client → ouvrir la modal d'assignation
     if (statutChoisi === "en_attente_client") {
       setClientChoisi(clientIdActuel ?? NON_ASSIGNE);
       setModalOuverte(true);
       return;
     }
-    // Sinon soumettre normalement
     const fd = new FormData(e.currentTarget as HTMLFormElement);
-    formAction(fd);
+    startTransition(() => formAction(fd));
   }
 
   return (

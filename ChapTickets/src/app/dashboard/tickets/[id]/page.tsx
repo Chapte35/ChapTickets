@@ -52,7 +52,7 @@ export default async function ClientTicketDetailPage({
     supabase
       .from("tickets_avec_rang")
       .select(
-        "id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, created_by, projets(nom, code_court), assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email)"
+        "id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, projet_id, assigne_a, created_by, release_id, projets(nom, code_court), assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email)"
       )
       .eq("id", id)
       .single(),
@@ -128,6 +128,20 @@ export default async function ClientTicketDetailPage({
   const typeTicket = (ticket as unknown as { type_ticket: string | null }).type_ticket as import("@/lib/types").TicketType | null;
   const assigneProfile = (ticket as unknown as { assigne_profile: { full_name: string | null; email: string | null } | null }).assigne_profile;
   const assigneNom = assigneProfile?.full_name || assigneProfile?.email || null;
+  const releaseId = (ticket as unknown as { release_id: string | null }).release_id;
+
+  // Fetch le nom de la release si le ticket y est assigné
+  let releaseNom: string | null = null;
+  if (releaseId) {
+    const { data: release } = await supabase
+      .from("releases")
+      .select("nom, date")
+      .eq("id", releaseId)
+      .single();
+    if (release) {
+      releaseNom = `${release.nom} (${new Date(release.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })})`;
+    }
+  }
 
   const relationsFormatees: TicketRelation[] = (relationsRows ?? []).map((r) => {
     const t = r.tickets_avec_rang as unknown as {
@@ -218,6 +232,7 @@ export default async function ClientTicketDetailPage({
             estAuteur={estAuteur}
             typeTicket={typeTicket}
             assigneNom={assigneNom}
+            releaseNom={releaseNom}
           />
 
           <Card>
