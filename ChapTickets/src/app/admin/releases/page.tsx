@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getTousLesProjets } from "@/lib/queries/tickets";
+import { getTousLesProjets, getClientsParProjet } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
 import { ReleasesBoardClient } from "./releases-board-client";
 import { TICKET_TRIS, type TicketTri, type TicketStatut, type TicketPriorite } from "@/lib/types";
@@ -23,13 +23,15 @@ export default async function ReleasesPage({
   const params = await searchParams;
   const supabase = await createClient();
 
-  const projets = await getTousLesProjets(supabase);
+  const [projets, clientsParProjet] = await Promise.all([
+    getTousLesProjets(supabase),
+    getClientsParProjet(supabase),
+  ]);
 
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
     : "recent";
 
-  // Tickets sans release — mêmes filtres que /admin/tickets
   let query = supabase
     .from("tickets_avec_rang")
     .select(
@@ -57,15 +59,12 @@ export default async function ReleasesPage({
 
       <TicketFiltersBar projets={projets} />
 
-      {/* key force le remontage du board quand les searchParams changent,
-          ce qui réinitialise le state local (tickets droppés, liste gauche).
-          Sans ça, le router.push recharge la page mais React garde le board
-          monté et le useState(ticketsInitiaux) ne se réexécute pas. */}
       <ReleasesBoardClient
         key={JSON.stringify(params)}
         tickets={(tickets ?? []) as unknown as TicketSansRelease[]}
         projets={projets}
         projetIdActuel={params.projet ?? null}
+        clientsParProjet={clientsParProjet}
       />
     </div>
   );

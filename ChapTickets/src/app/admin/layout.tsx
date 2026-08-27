@@ -11,6 +11,7 @@ const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin/releases", label: "Releases", icon: "releases" },
   { href: "/admin/calendrier", label: "Calendrier", icon: "calendrier" },
   { href: "/admin/messagerie", label: "Messagerie", icon: "messagerie" },
+  { href: "/admin/mailing", label: "Mailing", icon: "mailing" },
   { href: "/admin/idees", label: "Idées", icon: "idees" },
   { href: "/admin/projets", label: "Projets", icon: "projets" },
   { href: "/admin/tags", label: "Tags", icon: "tags" },

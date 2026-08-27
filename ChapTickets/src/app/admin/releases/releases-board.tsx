@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -35,8 +36,8 @@ import {
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { createReleaseAvecTickets } from "./actions";
 import type { TicketSansRelease } from "./page";
-import type { ProjetOption } from "@/lib/queries/tickets";
-import { X, GripVertical } from "lucide-react";
+import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
+import { X, GripVertical, Mail, Users, User } from "lucide-react";
 
 const DROPPABLE_ID = "release-form";
 
@@ -104,14 +105,42 @@ function ZoneRelease({
   onRetirer,
   projets,
   projetIdActuel,
+  clientsParProjet,
 }: {
   ticketsDroites: TicketSansRelease[];
   onRetirer: (id: string) => void;
   projets: ProjetOption[];
   projetIdActuel: string | null;
+  clientsParProjet: Record<string, ClientOption[]>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: DROPPABLE_ID });
   const [state, formAction, isPending] = useActionState(createReleaseAvecTickets, initialState);
+
+  const [projetSelectionne, setProjetSelectionne] = useState<string>(projetIdActuel ?? "");
+  const [notifier, setNotifier] = useState(false);
+  // "tous" = tous les clients du projet, "selection" = choix manuel
+  const [modeNotif, setModeNotif] = useState<"tous" | "selection">("tous");
+  const [clientsCoches, setClientsCoches] = useState<Set<string>>(new Set());
+  // On garde une ref du dernier projetSelectionne pour détecter le changement
+  // et réinitialiser la sélection sans passer par un effet.
+  const [projetPourClients, setProjetPourClients] = useState<string>(projetSelectionne);
+
+  const clientsDuProjet = projetSelectionne ? (clientsParProjet[projetSelectionne] ?? []) : [];
+
+  // Reset sélection quand le projet change — via le rendu, pas un effet
+  if (projetSelectionne !== projetPourClients) {
+    setProjetPourClients(projetSelectionne);
+    setClientsCoches(new Set());
+  }
+
+  function toggleClient(id: string) {
+    setClientsCoches((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <Card className="flex flex-col">
@@ -120,9 +149,15 @@ function ZoneRelease({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <form action={formAction} className="flex flex-col gap-3">
+          {/* Projet */}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Projet</Label>
-            <Select name="projet_id" defaultValue={projetIdActuel ?? undefined} required>
+            <Select
+              name="projet_id"
+              defaultValue={projetIdActuel ?? undefined}
+              onValueChange={setProjetSelectionne}
+              required
+            >
               <SelectTrigger size="sm">
                 <SelectValue placeholder="Choisir un projet..." />
               </SelectTrigger>
@@ -136,22 +171,25 @@ function ZoneRelease({
             </Select>
           </div>
 
+          {/* Nom */}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Nom</Label>
             <Input name="nom" placeholder="v1.2.0" required />
           </div>
 
+          {/* Date */}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Date de release</Label>
             <Input name="date" type="date" required />
           </div>
 
+          {/* Description */}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Description (optionnel)</Label>
             <Textarea name="description" className="text-sm min-h-16 resize-none" />
           </div>
 
-          {/* Zone de drop — cibles dnd-kit ET réception du lasso */}
+          {/* Zone de drop */}
           <div
             ref={setNodeRef}
             className={cn(
@@ -189,6 +227,95 @@ function ZoneRelease({
             ))}
           </div>
 
+          {/* ── Notification ───────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-2 rounded-lg border p-3 bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="notifier"
+                name="notifier"
+                checked={notifier}
+                onCheckedChange={(v) => setNotifier(!!v)}
+              />
+              <Label htmlFor="notifier" className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                <Mail className="size-3.5" />
+                Notifier les clients par email
+              </Label>
+            </div>
+
+            {notifier && clientsDuProjet.length > 0 && (
+              <div className="flex flex-col gap-2 pt-1 pl-1">
+                {/* Mode : tous / sélection */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModeNotif("tous")}
+                    className={cn(
+                      "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors",
+                      modeNotif === "tous"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-accent"
+                    )}
+                  >
+                    <Users className="size-3" />
+                    Tous ({clientsDuProjet.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModeNotif("selection")}
+                    className={cn(
+                      "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border transition-colors",
+                      modeNotif === "selection"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-accent"
+                    )}
+                  >
+                    <User className="size-3" />
+                    Sélection
+                  </button>
+                </div>
+
+                {/* Liste clients (mode sélection) */}
+                {modeNotif === "selection" && (
+                  <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
+                    {clientsDuProjet.map((c) => (
+                      <div key={c.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`client-${c.id}`}
+                          checked={clientsCoches.has(c.id)}
+                          onCheckedChange={() => toggleClient(c.id)}
+                        />
+                        <Label
+                          htmlFor={`client-${c.id}`}
+                          className="text-xs cursor-pointer truncate"
+                        >
+                          {c.full_name ?? c.email ?? c.id}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Hidden inputs pour les client_ids sélectionnés */}
+                {modeNotif === "selection" &&
+                  Array.from(clientsCoches).map((id) => (
+                    <input key={id} type="hidden" name="client_ids" value={id} />
+                  ))}
+              </div>
+            )}
+
+            {notifier && projetSelectionne && clientsDuProjet.length === 0 && (
+              <p className="text-xs text-muted-foreground pl-1">
+                Aucun client rattaché à ce projet.
+              </p>
+            )}
+
+            {notifier && !projetSelectionne && (
+              <p className="text-xs text-muted-foreground pl-1">
+                Sélectionnez d&apos;abord un projet.
+              </p>
+            )}
+          </div>
+
           {state.error && <p className="text-xs text-destructive">{state.error}</p>}
 
           <Button type="submit" size="sm" disabled={isPending}>
@@ -206,10 +333,12 @@ export function ReleasesBoard({
   tickets: ticketsInitiaux,
   projets,
   projetIdActuel,
+  clientsParProjet,
 }: {
   tickets: TicketSansRelease[];
   projets: ProjetOption[];
   projetIdActuel: string | null;
+  clientsParProjet: Record<string, ClientOption[]>;
 }) {
   const [tickets, setTickets] = useState(ticketsInitiaux);
   const [ticketsDroites, setTicketsDroites] = useState<TicketSansRelease[]>([]);
@@ -245,9 +374,6 @@ export function ReleasesBoard({
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
       if (!draggingRef.current) return;
-      setLasso((prev) =>
-        prev ? { ...prev, x2: e.clientX, y2: e.clientY } : prev
-      );
       setLasso((prev) => {
         if (!prev) return prev;
         const updated = { ...prev, x2: e.clientX, y2: e.clientY };
@@ -265,7 +391,6 @@ export function ReleasesBoard({
         const rect = { ...prev, x2: e.clientX, y2: e.clientY };
         const distance = Math.hypot(rect.x2 - rect.x1, rect.y2 - rect.y1);
         if (distance > 8) {
-          // Basculer tous les tickets sélectionnés vers la droite
           const selection = computeLassoIntersection(rect);
           if (selection.size > 0) {
             setTickets((prev) => {
@@ -293,10 +418,8 @@ export function ReleasesBoard({
   }, [computeLassoIntersection]);
 
   function handleListeMouseDown(e: React.MouseEvent) {
-    // Ne pas démarrer le lasso si on clique sur un élément interactif
     const cible = e.target as HTMLElement;
     if (cible.closest("button, a, input, [role='button']")) return;
-    // Ne pas démarrer si dnd-kit est en train de dragger
     if (activeId) return;
     draggingRef.current = true;
     setLasso({ x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY });
@@ -389,6 +512,7 @@ export function ReleasesBoard({
             onRetirer={retirerDuFormulaire}
             projets={projets}
             projetIdActuel={projetIdActuel}
+            clientsParProjet={clientsParProjet}
           />
         </div>
       </div>

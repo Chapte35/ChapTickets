@@ -69,9 +69,9 @@ export default async function ClientDashboardPage({
           .order("rang_projet", { ascending: true })
       : { data: [] };
 
-    const ticketsMap = new Map<string, typeof ticketsParRelease>();
-    for (const t of ticketsParRelease ?? []) {
-      const rid = (t as unknown as { release_id: string }).release_id;
+    const ticketsMap = new Map<string, unknown[]>();
+    for (const t of (ticketsParRelease ?? []) as unknown[]) {
+      const rid = (t as { release_id: string }).release_id;
       if (!ticketsMap.has(rid)) ticketsMap.set(rid, []);
       ticketsMap.get(rid)!.push(t);
     }

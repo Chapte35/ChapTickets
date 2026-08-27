@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ProjetOption } from "@/lib/queries/tickets";
+import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
 import type { TicketSansRelease } from "./page";
 
 // dnd-kit génère des aria-describedby avec des IDs incrémentaux qui
@@ -16,16 +16,19 @@ export function ReleasesBoardClient({
   tickets,
   projets,
   projetIdActuel,
+  clientsParProjet,
 }: {
   tickets: TicketSansRelease[];
   projets: ProjetOption[];
   projetIdActuel: string | null;
+  clientsParProjet: Record<string, ClientOption[]>;
 }) {
   return (
     <ReleasesBoard
       tickets={tickets}
       projets={projets}
       projetIdActuel={projetIdActuel}
+      clientsParProjet={clientsParProjet}
     />
   );
 }

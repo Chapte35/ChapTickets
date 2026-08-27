@@ -20,6 +20,7 @@ import {
   UserRound,
   UserCheck,
   PackageOpen,
+  MailOpen,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ const ICONS = {
   profil: UserRound,
   mes_tickets: UserCheck,
   releases: PackageOpen,
+  mailing: MailOpen,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIconName = keyof typeof ICONS;
