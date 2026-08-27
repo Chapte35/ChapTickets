@@ -13,10 +13,13 @@ const PUBLIC_PATHS = ["/login"];
  * - Connecté + route du mauvais rôle (ex: client sur /admin) -> son espace
  * - "/" -> redirigé vers son espace
  *
- * Une requête réseau vers `profiles` est faite ici pour connaître le rôle.
- * C'est un aller-retour DB de plus par requête protégée : acceptable pour le
- * MVP, mais si ça devient un point chaud, envisager de mettre le rôle dans
- * les custom claims du JWT (Supabase Auth Hooks) pour l'éviter.
+ * Le rôle est lu depuis user.app_metadata.role, injecté dans le JWT par
+ * le Auth Hook custom_access_token_hook (migration 0032). Aucun appel DB
+ * supplémentaire — corrige le 504 MIDDLEWARE_INVOCATION_TIMEOUT Vercel.
+ *
+ * Sécurité : le middleware ne fait que router/rediriger. La vraie protection
+ * des données vient de la RLS Postgres — même si quelqu'un bypass le
+ * middleware, la base refusera la requête.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,7 +45,9 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Ne pas retirer : nécessaire pour que le token soit rafraîchi avant expiration.
+  // Nécessaire pour rafraîchir le token avant expiration.
+  // Le rôle est disponible dans user.app_metadata grâce au Auth Hook —
+  // pas besoin d'un second appel à profiles.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -59,14 +64,10 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Utilisateur connecté : on récupère son rôle pour router/protéger.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const home = profile?.role === "admin" ? "/admin" : "/dashboard";
+  // Rôle lu depuis le JWT (app_metadata injecté par custom_access_token_hook)
+  // — zéro roundtrip DB supplémentaire.
+  const role = (user.app_metadata as { role?: string } | null)?.role;
+  const home = role === "admin" ? "/admin" : "/dashboard";
 
   if (isPublicPath || pathname === "/") {
     const url = request.nextUrl.clone();
@@ -74,13 +75,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/admin") && profile?.role !== "admin") {
+  if (pathname.startsWith("/admin") && role !== "admin") {
     const url = request.nextUrl.clone();
     url.pathname = home;
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/dashboard") && profile?.role !== "client") {
+  if (pathname.startsWith("/dashboard") && role !== "client") {
     const url = request.nextUrl.clone();
     url.pathname = home;
     return NextResponse.redirect(url);
