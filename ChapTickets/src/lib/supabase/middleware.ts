@@ -5,14 +5,17 @@ const PUBLIC_PATHS = ["/login"];
 
 /**
  * Rafraîchit la session Supabase (cookies) ET protège les routes par rôle.
+ * Appelé depuis src/proxy.ts (exclu du matcher : /logout, assets statiques).
  *
- * Le rôle est lu depuis profiles via un appel DB (60-120ms en moyenne).
- * Le Auth Hook JWT (migration 0032) n'est pas utilisé ici car getUser()
- * de @supabase/ssr ne retourne pas les claims enrichis par le hook.
+ * Règles :
+ * - Pas connecté + route protégée -> /login
+ * - Connecté + /login -> redirigé vers son espace (admin/client)
+ * - Connecté + route du mauvais rôle -> son espace
+ * - "/" -> redirigé vers son espace
  *
- * Un timeout de 1200ms protège contre les cold starts Supabase ponctuels :
- * si la DB ne répond pas, on redirige vers /login plutôt que de décrocher
- * un 504 Vercel.
+ * getUser() + profiles tournent dans un Promise.race avec timeout 1200ms :
+ * si Supabase est lent (cold start), on redirige vers /login plutôt que
+ * de décrocher un 504 Vercel. La RLS protège les données de toute façon.
  */
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -37,7 +40,6 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
-  // getUser() + profiles en parallèle avec timeout global 1200ms
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
   let role: string | undefined;
 
@@ -59,7 +61,6 @@ export async function updateSession(request: NextRequest) {
       ),
     ]);
   } catch {
-    // Timeout : redirect login plutôt que 504
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
