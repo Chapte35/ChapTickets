@@ -3,11 +3,19 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login"];
 
+/**
+ * Rafraîchit la session Supabase (cookies) ET protège les routes par rôle.
+ *
+ * Le rôle est lu depuis profiles via un appel DB (60-120ms en moyenne).
+ * Le Auth Hook JWT (migration 0032) n'est pas utilisé ici car getUser()
+ * de @supabase/ssr ne retourne pas les claims enrichis par le hook.
+ *
+ * Un timeout de 1200ms protège contre les cold starts Supabase ponctuels :
+ * si la DB ne répond pas, on redirige vers /login plutôt que de décrocher
+ * un 504 Vercel.
+ */
 export async function updateSession(request: NextRequest) {
-  const t0 = Date.now();
   const { pathname } = request.nextUrl;
-  console.log(`[middleware] → ${pathname}`);
-
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -27,68 +35,40 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  const isPublicPath = PUBLIC_PATHS.includes(pathname);
+
+  // getUser() + profiles en parallèle avec timeout global 1200ms
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  let role: string | undefined;
+
   try {
-    const t1 = Date.now();
-    const result = await Promise.race([
-      supabase.auth.getUser(),
+    await Promise.race([
+      (async () => {
+        const { data: { user: u } } = await supabase.auth.getUser();
+        if (!u) return;
+        user = u;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", u.id)
+          .single();
+        role = profile?.role as string | undefined;
+      })(),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("getUser timeout")), 1200)
+        setTimeout(() => reject(new Error("middleware timeout")), 1200)
       ),
     ]);
-    console.log(`[middleware] getUser() : ${Date.now() - t1}ms`);
-    user = result.data.user;
-  } catch (err) {
-    console.log(`[middleware] getUser() FAILED après ${Date.now() - t0}ms :`, err);
+  } catch {
+    // Timeout : redirect login plutôt que 504
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  const isPublicPath = PUBLIC_PATHS.includes(pathname);
-
   if (!user) {
-    console.log(`[middleware] no user, total : ${Date.now() - t0}ms`);
     if (!isPublicPath) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
-    return supabaseResponse;
-  }
-
-  const role = (user.app_metadata as { role?: string } | null)?.role;
-  console.log(`[middleware] user ok, role="${role}", total : ${Date.now() - t0}ms`);
-
-  // Si le rôle est absent du JWT (hook pas encore actif ou token pas rafraîchi),
-  // fallback sur un appel DB — évite la boucle de redirections.
-  // Une fois le hook confirmé actif et les tokens rafraîchis, ce fallback
-  // ne sera plus jamais atteint.
-  if (!role) {
-    console.log(`[middleware] role absent du JWT, fallback DB`);
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    const roleDb = profile?.role as string | undefined;
-    console.log(`[middleware] role DB : "${roleDb}", total : ${Date.now() - t0}ms`);
-
-    const home = roleDb === "admin" ? "/admin" : "/dashboard";
-
-    if (isPublicPath || pathname === "/") {
-      const url = request.nextUrl.clone();
-      url.pathname = home;
-      return NextResponse.redirect(url);
-    }
-    if (pathname.startsWith("/admin") && roleDb !== "admin") {
-      const url = request.nextUrl.clone();
-      url.pathname = home;
-      return NextResponse.redirect(url);
-    }
-    if (pathname.startsWith("/dashboard") && roleDb !== "client") {
-      const url = request.nextUrl.clone();
-      url.pathname = home;
       return NextResponse.redirect(url);
     }
     return supabaseResponse;
