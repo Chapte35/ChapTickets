@@ -28,6 +28,19 @@ export default async function ReleasesPage({
     getClientsParProjet(supabase),
   ]);
 
+  // Toutes les releases existantes pour le mode édition
+  const { data: releasesData } = await supabase
+    .from("releases")
+    .select("id, projet_id, nom, date, description")
+    .order("date", { ascending: false });
+  const releases = (releasesData ?? []) as Array<{
+    id: string;
+    projet_id: string;
+    nom: string;
+    date: string;
+    description: string | null;
+  }>;
+
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
     : "recent";
@@ -65,6 +78,7 @@ export default async function ReleasesPage({
         projets={projets}
         projetIdActuel={params.projet ?? null}
         clientsParProjet={clientsParProjet}
+        releases={releases}
       />
     </div>
   );

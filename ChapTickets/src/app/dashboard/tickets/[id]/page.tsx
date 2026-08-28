@@ -123,8 +123,6 @@ export default async function ClientTicketDetailPage({
   const statut = ticket.statut as TicketStatut;
   const priorite = ticket.priorite as TicketPriorite;
   const refAffichee = formatRefTicket(ticket.rang_projet, projet?.code_court);
-  const createdBy = (ticket as unknown as { created_by: string | null }).created_by;
-  const estAuteur = !!user && createdBy === user.id;
   const typeTicket = (ticket as unknown as { type_ticket: string | null }).type_ticket as import("@/lib/types").TicketType | null;
   const assigneProfile = (ticket as unknown as { assigne_profile: { full_name: string | null; email: string | null } | null }).assigne_profile;
   const assigneNom = assigneProfile?.full_name || assigneProfile?.email || null;
@@ -229,7 +227,6 @@ export default async function ClientTicketDetailPage({
             tags={tagsActuels}
             tousLesTags={tagsVisiblesPourProjet(tousLesTags, ticket.projet_id)}
             refAffichee={refAffichee}
-            estAuteur={estAuteur}
             typeTicket={typeTicket}
             assigneNom={assigneNom}
             releaseNom={releaseNom}

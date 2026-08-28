@@ -228,6 +228,7 @@ export function CreateTicketAdminForm({
           titre={titre}
           description={description}
           priorite={priorite}
+          typeTicket={typeTicket || null}
           projetNom={projetNom}
           clientNom={clientNom}
           dateEcheance={dateEcheance || null}

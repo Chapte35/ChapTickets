@@ -2,11 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TagChip } from "@/components/tag-badge";
 import { PrioriteBadge } from "@/components/priorite-badge";
+import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import {
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
   type TicketPriorite,
   type TicketStatut,
+  type TicketType,
   type Tag,
 } from "@/lib/types";
 
@@ -25,6 +27,7 @@ export function TicketPreviewCard({
   dateEcheance,
   tags,
   statut,
+  typeTicket,
   numero,
   refAffichee,
 }: {
@@ -36,6 +39,7 @@ export function TicketPreviewCard({
   dateEcheance: string | null;
   tags: Tag[];
   statut?: TicketStatut;
+  typeTicket?: TicketType | null;
   numero?: number;
   /** Référence pré-formatée (ex : "CHAP#32"). Si absent, on fallback sur "#numero". */
   refAffichee?: string;
@@ -59,6 +63,7 @@ export function TicketPreviewCard({
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <PrioriteBadge priorite={priorite} />
+            {typeTicket && <TicketTypeBadge type={typeTicket} />}
             {statut && (
               <Badge variant={ticketStatutBadgeVariant(statut)}>
                 {TICKET_STATUT_LABELS[statut]}

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth/guards";
-import { TICKET_PRIORITES } from "@/lib/types";
+import { TICKET_PRIORITES, TICKET_TYPES, type TicketType } from "@/lib/types";
 
 export type FormState = { error: string | null };
 
@@ -110,10 +110,12 @@ export async function demanderReouverture(
     };
   }
 
-  // Repasse le ticket en "ouvert" après l'insert de la demande
+  // Repasse le ticket en "ouvert" après l'insert de la demande.
+  // assigne_a → null : le ticket n'est plus attribué au client,
+  // l'admin reprend la main librement.
   const { error: updateError } = await supabase
     .from("tickets")
-    .update({ statut: "ouvert", updated_at: new Date().toISOString() })
+    .update({ statut: "ouvert", assigne_a: null, updated_at: new Date().toISOString() })
     .eq("id", ticketId);
 
   if (updateError) {
@@ -220,19 +222,6 @@ export async function updateTicketPrioriteClient(
     return { error: "Priorité invalide." };
   }
 
-  // Vérification applicative : le client ne peut modifier que ses propres tickets.
-  // Le trigger 0021 est la ligne de défense DB — cette vérif applicative évite
-  // d'exposer une erreur de trigger cryptique à l'utilisateur.
-  const { data: ticket } = await supabase
-    .from("tickets")
-    .select("created_by")
-    .eq("id", ticketId)
-    .single();
-
-  if (!ticket || ticket.created_by !== userId) {
-    return { error: "Vous ne pouvez modifier la priorité que sur vos propres tickets." };
-  }
-
   const { error } = await supabase
     .from("tickets")
     .update({ priorite, updated_at: new Date().toISOString() })
@@ -242,6 +231,44 @@ export async function updateTicketPrioriteClient(
 
   revalidatePath(`/dashboard/tickets/${ticketId}`);
   revalidatePath("/dashboard/tickets");
+  return { error: null };
+}
+
+export async function updateTicketTypeClient(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const ticketId = formData.get("ticket_id");
+  const typeRaw = formData.get("type_ticket");
+  if (typeof ticketId !== "string" || !ticketId) return { error: "Ticket invalide." };
+
+  const type = typeof typeRaw === "string" && typeRaw && TICKET_TYPES.includes(typeRaw as TicketType)
+    ? (typeRaw as TicketType)
+    : null;
+
+  const { data: avant } = await supabase
+    .from("tickets").select("type_ticket").eq("id", ticketId).single();
+
+  const { error } = await supabase
+    .from("tickets")
+    .update({ type_ticket: type, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
+
+  if (error) return { error: `Erreur : ${error.message}` };
+
+  const { logHistorique } = await import("@/lib/historique");
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "type_ticket",
+    ancienneValeur: (avant as unknown as { type_ticket: string | null })?.type_ticket ?? null,
+    nouvelleValeur: type,
+    changedBy: userId,
+  });
+
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
   return { error: null };
 }
 
@@ -280,8 +307,9 @@ export async function validerTicketClient(
     .from("tickets")
     .update({
       statut: "resolu",
-      // Le client a validé : on réassigne au dev (created_by) pour la suite éventuelle
-      assigne_a: ticket.created_by ?? null,
+      // Le client a validé : on désattribue (null) — created_by peut être
+      // le client lui-même, et assigne_a = null signifie "revient au dev".
+      assigne_a: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", ticketId);

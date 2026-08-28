@@ -7,7 +7,6 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   TICKET_STATUT_LABELS,
-  TICKET_TYPE_LABELS,
   ticketStatutBadgeVariant,
   formatRefTicket,
 } from "@/lib/types";
@@ -110,7 +109,7 @@ function CardRelease({ release }: { release: ReleaseAvecTickets }) {
       <button
         type="button"
         onClick={() => setOuvert((v) => !v)}
-        className="w-full flex items-start gap-3 p-4 text-left hover:bg-accent/30 transition-colors"
+        className="w-full flex items-start gap-3 p-4 text-left hover:bg-accent/30 transition-colors cursor-pointer group"
       >
         <span className="mt-0.5 shrink-0">
           <PackageOpen className="size-4 text-muted-foreground" />
@@ -141,7 +140,7 @@ function CardRelease({ release }: { release: ReleaseAvecTickets }) {
           )}
         </div>
 
-        <span className="mt-0.5 shrink-0 text-muted-foreground">
+        <span className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors">
           {ouvert ? (
             <ChevronDown className="size-4" />
           ) : (

@@ -119,17 +119,80 @@ export async function rechercherTicketsPourRelation(
 
   const exclus = [ticketId, ...(dejaLies ?? []).map((r) => r.ticket_cible_id)];
 
-  const { data } = await supabase
+  const exclusFilter = `(${exclus.join(",")})`;
+
+  function mapResult(t: unknown): { id: string; rang_projet: number; titre: string; code_court: string | null } {
+    const row = t as { id: string; rang_projet: number; titre: string; projets: unknown };
+    return {
+      id: row.id,
+      rang_projet: row.rang_projet,
+      titre: row.titre,
+      code_court: (row.projets as { code_court: string | null } | null)?.code_court ?? null,
+    };
+  }
+
+  const dejaInclus = new Set<string>(exclus);
+  const resultats: Array<{ id: string; rang_projet: number; titre: string; code_court: string | null }> = [];
+
+  // 1. Recherche par titre (ilike) — le # est échappé pour PostgREST
+  const titreSafe = query.replace(/#/g, "\\#");
+  const { data: parTitre } = await supabase
     .from("tickets_avec_rang")
     .select("id, rang_projet, titre, projets(code_court)")
-    .not("id", "in", `(${exclus.join(",")})`)
-    .or(`titre.ilike.%${query}%`)
+    .not("id", "in", exclusFilter)
+    .ilike("titre", `%${titreSafe}%`)
     .limit(8);
 
-  return (data ?? []).map((t) => ({
-    id: t.id,
-    rang_projet: t.rang_projet,
-    titre: t.titre,
-    code_court: (t.projets as unknown as { code_court: string | null } | null)?.code_court ?? null,
-  }));
+  for (const t of parTitre ?? []) {
+    const r = mapResult(t);
+    if (!dejaInclus.has(r.id)) {
+      dejaInclus.add(r.id);
+      resultats.push(r);
+    }
+  }
+
+  // 2. Recherche par numéro pur (ex: "12" → rang_projet = 12)
+  const numMatch = query.trim().match(/^\d+$/);
+  if (numMatch && resultats.length < 8) {
+    const rang = parseInt(query.trim());
+    const { data: parNum } = await supabase
+      .from("tickets_avec_rang")
+      .select("id, rang_projet, titre, projets(code_court)")
+      .not("id", "in", `(${[...dejaInclus].join(",")})`)
+      .eq("rang_projet", rang)
+      .limit(8 - resultats.length);
+
+    for (const t of parNum ?? []) {
+      const r = mapResult(t);
+      if (!dejaInclus.has(r.id)) {
+        dejaInclus.add(r.id);
+        resultats.push(r);
+      }
+    }
+  }
+
+  // 3. Recherche par ref formatée (ex: "CHAP#12", "CHAP", "CHAP12")
+  const qUpper = query.trim().toUpperCase();
+  const refMatch = qUpper.match(/^([A-Z]+)#?(\d*)$/);
+  if (refMatch && !numMatch && resultats.length < 8) {
+    const [, codeCourt, rang] = refMatch;
+    let refQuery = supabase
+      .from("tickets_avec_rang")
+      .select("id, rang_projet, titre, projets(code_court)")
+      .not("id", "in", `(${[...dejaInclus].join(",")})`)
+      .ilike("projets.code_court", `${codeCourt}%`);
+
+    if (rang) refQuery = refQuery.eq("rang_projet", parseInt(rang));
+
+    const { data: parRef } = await refQuery.limit(8 - resultats.length);
+    for (const t of parRef ?? []) {
+      const r = mapResult(t);
+      if (!dejaInclus.has(r.id)) {
+        dejaInclus.add(r.id);
+        resultats.push(r);
+      }
+    }
+  }
+
+  return resultats.slice(0, 8);
 }

@@ -96,3 +96,71 @@ export async function createReleaseAvecTickets(
   revalidatePath("/admin/mailing");
   return { error: null };
 }
+
+export type EditFormState = { error: string | null };
+
+/**
+ * Met à jour une release existante (nom, date, description) et synchronise
+ * ses tickets : les ticket_ids passés → release_id = release.id,
+ * les tickets qui étaient dans la release mais absents du nouveau set → release_id = null.
+ */
+export async function updateReleaseAvecTickets(
+  _prevState: EditFormState,
+  formData: FormData
+): Promise<EditFormState> {
+  const { supabase, isAdmin } = await requireAdmin();
+  if (!isAdmin) return { error: "Action réservée à l'admin." };
+
+  const releaseId = formData.get("release_id");
+  const nom = formData.get("nom");
+  const date = formData.get("date");
+  const description = formData.get("description");
+  const ticketIds = formData
+    .getAll("ticket_ids")
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+
+  if (typeof releaseId !== "string" || !releaseId) return { error: "Release invalide." };
+  if (typeof nom !== "string" || !nom.trim()) return { error: "Nom de release requis." };
+  if (typeof date !== "string" || !date) return { error: "Date requise." };
+
+  // ── Mise à jour des métadonnées ────────────────────────────────────────────
+  const { error: updateError } = await supabase
+    .from("releases")
+    .update({
+      nom: nom.trim(),
+      date,
+      description:
+        typeof description === "string" && description.trim()
+          ? description.trim()
+          : null,
+    })
+    .eq("id", releaseId);
+
+  if (updateError) return { error: `Erreur : ${updateError.message}` };
+
+  // ── Synchronisation des tickets ────────────────────────────────────────────
+  // 1. Retirer les tickets qui étaient dans la release mais ne sont plus dans le set
+  const { error: removeError } = await supabase
+    .from("tickets")
+    .update({ release_id: null })
+    .eq("release_id", releaseId)
+    .not("id", "in", ticketIds.length > 0 ? `(${ticketIds.join(",")})` : "(00000000-0000-0000-0000-000000000000)");
+
+  if (removeError) return { error: `Erreur retrait tickets : ${removeError.message}` };
+
+  // 2. Assigner les nouveaux tickets
+  if (ticketIds.length > 0) {
+    const { error: assignError } = await supabase
+      .from("tickets")
+      .update({ release_id: releaseId })
+      .in("id", ticketIds);
+
+    if (assignError) return { error: `Erreur assignation tickets : ${assignError.message}` };
+  }
+
+  revalidatePath("/admin/releases");
+  revalidatePath("/admin/calendrier");
+  revalidatePath("/admin/tickets");
+  revalidatePath("/admin/mailing");
+  return { error: null };
+}

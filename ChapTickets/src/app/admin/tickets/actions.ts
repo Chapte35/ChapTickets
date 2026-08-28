@@ -451,6 +451,30 @@ export async function traiterDemandeReouverture(
     });
   }
 
+  // Branche refusée : remettre le ticket en ouvert + désattribuer le client.
+  // (Si acceptée, le ticket original est déjà passé à "ferme" plus haut.)
+  if (decision === "refusee") {
+    await supabase
+      .from("tickets")
+      .update({ statut: "ouvert", assigne_a: null, updated_at: new Date().toISOString() })
+      .eq("id", ticketId);
+
+    await logHistorique(supabase, {
+      ticketId,
+      champ: "statut",
+      ancienneValeur: "en_attente_client",
+      nouvelleValeur: "ouvert — Réouverture refusée",
+      changedBy: userId,
+    });
+
+    await supabase.from("ticket_statut_historique").insert({
+      ticket_id: ticketId,
+      ancien_statut: "en_attente_client",
+      nouveau_statut: "ouvert",
+      changed_by: userId,
+    });
+  }
+
   const { error: demandeError } = await supabase
     .from("demandes_reouverture")
     .update({

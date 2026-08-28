@@ -78,7 +78,8 @@ export function GlobalCommandMenu({ basePath }: { basePath: "/admin" | "/dashboa
                 onSelect={() => aller(`${basePath}/tickets/${t.id}`)}
               >
                 <Ticket />
-                {t.titre}
+                <span className="font-mono text-xs text-muted-foreground shrink-0">{t.ref}</span>
+                <span className="truncate">{t.titre}</span>
               </CommandItem>
             ))}
           </CommandGroup>

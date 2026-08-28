@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { InlineEditField } from "@/components/inline-edit-field";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
-import { PrioriteBadge } from "@/components/priorite-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +19,7 @@ import {
   TICKET_PRIORITE_LABELS,
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
+  TICKET_TYPES,
   TICKET_TYPE_LABELS,
   type TicketPriorite,
   type TicketStatut,
@@ -31,10 +31,12 @@ import {
   updateTicketTitreClient,
   updateTicketDescriptionClient,
   updateTicketPrioriteClient,
+  updateTicketTypeClient,
 } from "../actions";
 
 type FormState = { error: string | null };
 const initialState: FormState = { error: null };
+const AUCUN_TYPE = "__aucun__";
 
 /**
  * Sélecteur de priorité pour le client — uniquement rendu si le client
@@ -88,6 +90,43 @@ function ClientPriorityForm({
  * (estAuteur = true). Dans le cas contraire un badge lecture seule est affiché.
  * Les champs structurels (assigné, statut…) restent dans la colonne droite.
  */
+function ClientTypeForm({
+  ticketId,
+  currentType,
+}: {
+  ticketId: string;
+  currentType: TicketType | null;
+}) {
+  const [state, formAction, isPending] = useActionState(updateTicketTypeClient, initialState);
+  useToastOnSuccess(isPending, state.error, "Type mis à jour.");
+
+  return (
+    <form action={formAction} className="flex items-end gap-2">
+      <input type="hidden" name="ticket_id" value={ticketId} />
+      <Select name="type_ticket" defaultValue={currentType ?? AUCUN_TYPE}>
+        <SelectTrigger size="sm" className="w-[200px]">
+          <SelectValue placeholder="Aucun type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={AUCUN_TYPE}>— Aucun type</SelectItem>
+          {TICKET_TYPES.map((t) => (
+            <SelectItem key={t} value={t}>
+              <span className="flex items-center gap-1.5">
+                <TicketTypeBadge type={t} variant="icon" />
+                {TICKET_TYPE_LABELS[t]}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button type="submit" size="sm" variant="outline" disabled={isPending}>
+        {isPending ? "..." : "Mettre à jour"}
+      </Button>
+      {state.error && <p role="alert" className="text-sm text-destructive self-center">{state.error}</p>}
+    </form>
+  );
+}
+
 export function TicketDetailEditableClient({
   ticketId,
   titre,
@@ -99,7 +138,6 @@ export function TicketDetailEditableClient({
   tags,
   tousLesTags,
   refAffichee,
-  estAuteur,
   typeTicket,
   assigneNom,
   releaseNom,
@@ -115,7 +153,6 @@ export function TicketDetailEditableClient({
   tousLesTags: Tag[];
   refAffichee?: string;
   /** True si auth.uid() === created_by — autorise la modification de priorité. */
-  estAuteur: boolean;
   typeTicket?: TicketType | null;
   assigneNom?: string | null;
   releaseNom?: string | null;
@@ -173,14 +210,10 @@ export function TicketDetailEditableClient({
           />
         </div>
 
-        {/* Priorité — éditable si auteur, lecture seule sinon */}
+        {/* Priorité — éditable par tout client ayant accès au ticket */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">Priorité</span>
-          {estAuteur ? (
-            <ClientPriorityForm ticketId={ticketId} currentPriorite={priorite} />
-          ) : (
-            <PrioriteBadge priorite={priorite} />
-          )}
+          <ClientPriorityForm ticketId={ticketId} currentPriorite={priorite} />
         </div>
 
         {/* Statut — lecture seule côté client */}
@@ -191,13 +224,11 @@ export function TicketDetailEditableClient({
           </Badge>
         </div>
 
-        {/* Type — lecture seule */}
-        {typeTicket && (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">Type</span>
-            <TicketTypeBadge type={typeTicket} variant="full" />
-          </div>
-        )}
+        {/* Type — éditable */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">Type</span>
+          <ClientTypeForm ticketId={ticketId} currentType={typeTicket ?? null} />
+        </div>
 
         {/* Assigné — lecture seule */}
         {assigneNom && (
