@@ -40,8 +40,6 @@ export async function updateSession(request: NextRequest) {
     user = result.data.user;
   } catch (err) {
     console.log(`[middleware] getUser() FAILED après ${Date.now() - t0}ms :`, err);
-    // Timeout Supabase : on redirige vers /login plutôt que de laisser
-    // passer une requête sans session (évite le blackscreen).
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -62,6 +60,40 @@ export async function updateSession(request: NextRequest) {
   const role = (user.app_metadata as { role?: string } | null)?.role;
   console.log(`[middleware] user ok, role="${role}", total : ${Date.now() - t0}ms`);
 
+  // Si le rôle est absent du JWT (hook pas encore actif ou token pas rafraîchi),
+  // fallback sur un appel DB — évite la boucle de redirections.
+  // Une fois le hook confirmé actif et les tokens rafraîchis, ce fallback
+  // ne sera plus jamais atteint.
+  if (!role) {
+    console.log(`[middleware] role absent du JWT, fallback DB`);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    const roleDb = profile?.role as string | undefined;
+    console.log(`[middleware] role DB : "${roleDb}", total : ${Date.now() - t0}ms`);
+
+    const home = roleDb === "admin" ? "/admin" : "/dashboard";
+
+    if (isPublicPath || pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = home;
+      return NextResponse.redirect(url);
+    }
+    if (pathname.startsWith("/admin") && roleDb !== "admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = home;
+      return NextResponse.redirect(url);
+    }
+    if (pathname.startsWith("/dashboard") && roleDb !== "client") {
+      const url = request.nextUrl.clone();
+      url.pathname = home;
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
+
   const home = role === "admin" ? "/admin" : "/dashboard";
 
   if (isPublicPath || pathname === "/") {
@@ -69,13 +101,11 @@ export async function updateSession(request: NextRequest) {
     url.pathname = home;
     return NextResponse.redirect(url);
   }
-
   if (pathname.startsWith("/admin") && role !== "admin") {
     const url = request.nextUrl.clone();
     url.pathname = home;
     return NextResponse.redirect(url);
   }
-
   if (pathname.startsWith("/dashboard") && role !== "client") {
     const url = request.nextUrl.clone();
     url.pathname = home;
