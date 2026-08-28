@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ["/login"];
 
 /**
  * Rafraîchit la session Supabase (cookies) ET protège les routes par rôle.
- * Appelé depuis src/proxy.ts.
+ * Appelé depuis src/proxy.ts (exclu du matcher : /logout, assets statiques).
  *
  * Règles :
  * - Pas connecté + route protégée -> /login
@@ -15,11 +15,11 @@ const PUBLIC_PATHS = ["/login"];
  *
  * Le rôle est lu depuis user.app_metadata.role, injecté dans le JWT par
  * le Auth Hook custom_access_token_hook (migration 0032). Aucun appel DB
- * supplémentaire — corrige le 504 MIDDLEWARE_INVOCATION_TIMEOUT Vercel.
+ * supplémentaire.
  *
- * Sécurité : le middleware ne fait que router/rediriger. La vraie protection
- * des données vient de la RLS Postgres — même si quelqu'un bypass le
- * middleware, la base refusera la requête.
+ * Un timeout de 1200ms est appliqué sur getUser() : si Supabase ne répond
+ * pas, on laisse passer la requête plutôt que de déclencher un 504 Vercel
+ * (le layout + la RLS prendront le relais pour protéger les données).
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -45,12 +45,22 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Nécessaire pour rafraîchir le token avant expiration.
-  // Le rôle est disponible dans user.app_metadata grâce au Auth Hook —
-  // pas besoin d'un second appel à profiles.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getUser() avec timeout : Vercel Edge Runtime limite à ~1.5s.
+  // Si Supabase est lent (cold start, réseau), on laisse passer plutôt
+  // que de bloquer — la RLS protège de toute façon côté DB.
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("getUser timeout")), 1200)
+      ),
+    ]);
+    user = result.data.user;
+  } catch {
+    // Timeout ou erreur réseau : on laisse passer, pas de 504
+    return supabaseResponse;
+  }
 
   const { pathname } = request.nextUrl;
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
