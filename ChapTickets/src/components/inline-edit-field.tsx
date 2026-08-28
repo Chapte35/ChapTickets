@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState, useTransition, useEffect, type KeyboardEvent } from "react";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then(m => m.RichTextEditor), { ssr: false });
 import { Pencil, Check, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +38,7 @@ export function InlineEditField({
 }: {
   ticketId: string;
   valeurInitiale: string;
-  mode: "title" | "textarea";
+  mode: "title" | "textarea" | "richtext";
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
   className?: string;
   /** Texte affiché quand le champ est vide et qu'on survole. */
@@ -124,25 +127,34 @@ export function InlineEditField({
   if (editing) {
     return (
       <div className={cn("flex flex-col gap-1.5", className)}>
-        <Textarea
-          ref={textareaRef}
-          value={brouillon}
-          onChange={(e) => {
-            setBrouillon(e.target.value);
-            autoResize();
-          }}
-          onKeyDown={handleKeyDown}
-          disabled={isPending}
-          placeholder={placeholderVide}
-          rows={1}
-          className={cn(
-            "resize-none overflow-hidden",
-            mode === "title"
-              ? "text-base font-semibold leading-snug min-h-0 py-1"
-              : "text-sm min-h-24"
-          )}
-        />
-        {mode === "textarea" && (
+        {mode === "richtext" ? (
+          <RichTextEditor
+            ticketId={ticketId}
+            valeurInitiale={brouillon}
+            onChange={setBrouillon}
+            placeholder={placeholderVide}
+          />
+        ) : (
+          <Textarea
+            ref={textareaRef}
+            value={brouillon}
+            onChange={(e) => {
+              setBrouillon(e.target.value);
+              autoResize();
+            }}
+            onKeyDown={handleKeyDown}
+            disabled={isPending}
+            placeholder={placeholderVide}
+            rows={1}
+            className={cn(
+              "resize-none overflow-hidden",
+              mode === "title"
+                ? "text-base font-semibold leading-snug min-h-0 py-1"
+                : "text-sm min-h-24"
+            )}
+          />
+        )}
+        {(mode === "textarea" || mode === "richtext") && (
           <p className="text-xs text-muted-foreground">Ctrl+Entrée pour sauvegarder · Échap pour annuler</p>
         )}
         {mode === "title" && (

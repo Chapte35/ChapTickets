@@ -33,6 +33,7 @@ import {
   updateTicketPrioriteClient,
   updateTicketTypeClient,
 } from "../actions";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 type FormState = { error: string | null };
 const initialState: FormState = { error: null };
@@ -183,16 +184,14 @@ export function TicketDetailEditableClient({
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
-        {/* Description éditable */}
+        {/* Description éditable — éditeur riche Tiptap */}
         <InlineEditField
           ticketId={ticketId}
           valeurInitiale={description}
-          mode="textarea"
+          mode="richtext"
           action={updateTicketDescriptionClient}
           placeholderVide="Ajouter une description…"
-          renderRempli={(v) => (
-            <p className="text-sm whitespace-pre-wrap">{v}</p>
-          )}
+          renderRempli={(v) => <MarkdownRenderer content={v} />}
           renderVide={
             <p className="text-sm text-muted-foreground italic">
               Pas de description. Cliquer pour en ajouter une.

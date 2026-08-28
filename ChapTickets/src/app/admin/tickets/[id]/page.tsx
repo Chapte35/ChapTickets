@@ -16,7 +16,6 @@ import {
 } from "@/lib/types";
 import { getAllTags } from "@/lib/queries/tags";
 import { getTousLesProfils } from "@/lib/queries/tickets";
-import { StatusUpdateForm } from "./status-update-form";
 import { DateEcheanceForm } from "./date-echeance-form";
 import { AssigneAForm } from "./assigne-a-form";
 import {
@@ -86,7 +85,7 @@ export default async function AdminTicketDetailPage({
       .order("created_at"),
     supabase
       .from("ticket_attachments")
-      .select("id, storage_path, nom_fichier, taille_octets, created_at")
+      .select("id, storage_path, nom_fichier, taille_octets, type_mime, created_at")
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),
     getTousLesProfils(supabase),
@@ -201,6 +200,7 @@ export default async function AdminTicketDetailPage({
         taille_octets: a.taille_octets,
         created_at: a.created_at,
         url: signed?.signedUrl ?? null,
+        type_mime: (a as unknown as { type_mime: string | null }).type_mime ?? null,
       };
     })
   );

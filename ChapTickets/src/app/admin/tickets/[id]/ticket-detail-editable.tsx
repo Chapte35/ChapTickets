@@ -14,6 +14,7 @@ import {
 } from "@/lib/types";
 import type { ClientOption } from "@/lib/queries/tickets";
 import { updateTicketTitre, updateTicketDescription } from "../actions";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 /**
  * Fiche ticket admin : titre, description, priorité, statut et tags
@@ -80,16 +81,14 @@ export function TicketDetailEditable({
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
-        {/* Description éditable */}
+        {/* Description éditable — éditeur riche Tiptap */}
         <InlineEditField
           ticketId={ticketId}
           valeurInitiale={description}
-          mode="textarea"
+          mode="richtext"
           action={updateTicketDescription}
           placeholderVide="Ajouter une description…"
-          renderRempli={(v) => (
-            <p className="text-sm whitespace-pre-wrap">{v}</p>
-          )}
+          renderRempli={(v) => <MarkdownRenderer content={v} />}
           renderVide={
             <p className="text-sm text-muted-foreground italic">
               Pas de description. Cliquer pour en ajouter une.

@@ -63,3 +63,43 @@ export async function uploadAttachment(
   revalidatePath(`/dashboard/tickets/${ticketId}`);
   return { error: null };
 }
+
+export async function deleteAttachment(
+  attachmentId: string,
+  ticketId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non authentifié." };
+
+  // Récupérer le storage_path avant suppression
+  const { data: attachment, error: fetchError } = await supabase
+    .from("ticket_attachments")
+    .select("storage_path, ticket_id")
+    .eq("id", attachmentId)
+    .single();
+
+  if (fetchError || !attachment) return { error: "Pièce jointe introuvable." };
+
+  // Vérification de cohérence : la PJ doit appartenir au ticket demandé
+  // (RLS protège déjà, mais évite un message d'erreur cryptique)
+  if (attachment.ticket_id !== ticketId) return { error: "Incohérence ticket/PJ." };
+
+  // Supprimer la ligne metadata — la RLS vérifie les droits
+  const { error: deleteError } = await supabase
+    .from("ticket_attachments")
+    .delete()
+    .eq("id", attachmentId);
+
+  if (deleteError) return { error: `Erreur : ${deleteError.message}` };
+
+  // Supprimer le fichier du bucket (best-effort : si ça rate, l'orphelin
+  // sera nettoyé lors d'une passe de maintenance future)
+  await supabase.storage
+    .from("ticket-attachments")
+    .remove([attachment.storage_path]);
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  revalidatePath(`/dashboard/tickets/${ticketId}`);
+  return { error: null };
+}

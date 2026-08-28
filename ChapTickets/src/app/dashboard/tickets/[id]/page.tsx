@@ -77,7 +77,7 @@ export default async function ClientTicketDetailPage({
       .order("created_at"),
     supabase
       .from("ticket_attachments")
-      .select("id, storage_path, nom_fichier, taille_octets, created_at")
+      .select("id, storage_path, nom_fichier, taille_octets, type_mime, created_at")
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -191,6 +191,7 @@ export default async function ClientTicketDetailPage({
         taille_octets: a.taille_octets,
         created_at: a.created_at,
         url: signed?.signedUrl ?? null,
+        type_mime: (a as unknown as { type_mime: string | null }).type_mime ?? null,
       };
     })
   );
