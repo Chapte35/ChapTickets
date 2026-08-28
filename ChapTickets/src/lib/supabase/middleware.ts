@@ -40,7 +40,11 @@ export async function updateSession(request: NextRequest) {
     user = result.data.user;
   } catch (err) {
     console.log(`[middleware] getUser() FAILED après ${Date.now() - t0}ms :`, err);
-    return supabaseResponse;
+    // Timeout Supabase : on redirige vers /login plutôt que de laisser
+    // passer une requête sans session (évite le blackscreen).
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
