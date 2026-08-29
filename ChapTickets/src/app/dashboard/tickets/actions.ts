@@ -111,11 +111,9 @@ export async function demanderReouverture(
   }
 
   // Repasse le ticket en "ouvert" après l'insert de la demande.
-  // assigne_a → null : le ticket n'est plus attribué au client,
-  // l'admin reprend la main librement.
   const { error: updateError } = await supabase
     .from("tickets")
-    .update({ statut: "ouvert", assigne_a: null, updated_at: new Date().toISOString() })
+    .update({ statut: "ouvert", updated_at: new Date().toISOString() })
     .eq("id", ticketId);
 
   if (updateError) {
@@ -303,13 +301,13 @@ export async function validerTicketClient(
     return { error: "Ce ticket n'est pas en attente de validation client." };
   }
 
+  // On ne touche PAS à assigne_a ici : le trigger restreindre_update_ticket_client
+  // bloque toute modification de assigne_a par un client. La désassignation
+  // est gérée côté admin (traiterDemandeReouverture) ou via une action admin.
   const { error: updateError } = await supabase
     .from("tickets")
     .update({
       statut: "resolu",
-      // Le client a validé : on désattribue (null) — created_by peut être
-      // le client lui-même, et assigne_a = null signifie "revient au dev".
-      assigne_a: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", ticketId);
