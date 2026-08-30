@@ -104,6 +104,7 @@ export function InlineEditField({
       } else {
         setValeur(brouillon.trim());
         setEditing(false);
+        window.dispatchEvent(new CustomEvent("ticket-historique-refresh"));
       }
     });
   }
@@ -186,6 +187,28 @@ export function InlineEditField({
             <X className="size-3" />
             Annuler
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Mode richtext : bouton crayon explicite pour éviter le conflit
+  // entre le click du wrapper et les clicks internes de Tiptap.
+  if (mode === "richtext") {
+    return (
+      <div className={cn("group relative", className)}>
+        <button
+          type="button"
+          onClick={commencerEdition}
+          className="absolute -top-1 -right-1 flex items-center justify-center rounded-full bg-muted p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          aria-label="Modifier la description"
+        >
+          <Pencil className="size-2.5 text-muted-foreground" />
+        </button>
+        <div className="rounded transition-colors group-hover:bg-muted/30 cursor-text" onClick={commencerEdition}>
+          {valeur ? renderRempli(valeur) : (
+            <div className="text-sm text-muted-foreground italic cursor-pointer">{renderVide}</div>
+          )}
         </div>
       </div>
     );

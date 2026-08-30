@@ -103,6 +103,17 @@ async function uploadImageToStorage(
   file: File,
   ticketId: string
 ): Promise<string | null> {
+  // Pas d'upload possible à la création (pas de ticketId réel)
+  if (ticketId === "__creation__") {
+    // Fallback : base64 temporaire — sera perdu si l'utilisateur ne sauvegarde pas
+    // mais évite un crash. L'image sera uploadée lors d'une édition ultérieure.
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
   const supabase = createClient();
   const path = `${ticketId}/${crypto.randomUUID()}-${file.name}`;
 

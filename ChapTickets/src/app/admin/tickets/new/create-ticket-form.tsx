@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then(m => m.RichTextEditor), { ssr: false });
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -91,12 +92,12 @@ export function CreateTicketAdminForm({
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            name="description"
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+          <input type="hidden" name="description" value={description} />
+          <RichTextEditor
+            ticketId="__creation__"
+            valeurInitiale={description}
+            onChange={setDescription}
+            placeholder="Description du ticket…"
           />
         </div>
 

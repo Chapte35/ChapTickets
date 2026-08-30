@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { History } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, type AvatarCouleur } from "@/components/avatar";
@@ -93,8 +93,7 @@ export function TicketHistorique({ ticketId }: { ticketId: string }) {
   const [profilsMap, setProfilsMap] = useState<Map<string, Profil>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function charger() {
+  const charger = useCallback(async () => {
       const supabase = createClient();
       const { data } = await supabase
         .from("ticket_historique")
@@ -137,12 +136,42 @@ export function TicketHistorique({ ticketId }: { ticketId: string }) {
         }))
       );
       setLoading(false);
-    }
-    charger();
   }, [ticketId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { charger(); }, [charger]);
+
+  // Supabase Realtime — fonctionne avec REPLICA IDENTITY FULL (migration appliquée).
+  // Recharge instantanément dès qu'une ligne est insérée dans ticket_historique.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`ticket-historique-${ticketId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "ticket_historique",
+          filter: `ticket_id=eq.${ticketId}`,
+        },
+        () => { charger(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [ticketId, charger]);
+
   if (loading) return null;
-  if (entrees.length === 0) return null;
+
+  if (entrees.length === 0) {
+    return (
+      <div className="flex items-center gap-2">
+        <History className="size-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Aucun historique</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">

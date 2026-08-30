@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth/guards";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { TICKET_PRIORITES, TICKET_TYPES, type TicketType } from "@/lib/types";
 
 export type FormState = { error: string | null };
@@ -120,6 +121,12 @@ export async function demanderReouverture(
     return { error: `Erreur : ${updateError.message}` };
   }
 
+  // Désassigner via service role — le trigger bloque assigne_a pour les clients
+  await createAdminClient()
+    .from("tickets")
+    .update({ assigne_a: null })
+    .eq("id", ticketId);
+
   // Log dans les deux tables d'historique
   await supabase.from("ticket_statut_historique").insert({
     ticket_id: ticketId,
@@ -167,6 +174,16 @@ export async function updateTicketTitreClient(
 
   if (error) return { error: `Erreur : ${error.message}` };
 
+  const { data: avant } = await supabase.from("tickets").select("titre").eq("id", ticketId).single();
+  const { logHistorique } = await import("@/lib/historique");
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "titre",
+    ancienneValeur: (avant as unknown as { titre: string | null })?.titre ?? null,
+    nouvelleValeur: valeur.trim(),
+    changedBy: userId,
+  });
+
   revalidatePath(`/dashboard/tickets/${ticketId}`);
   revalidatePath("/dashboard/tickets");
   return { error: null };
@@ -191,6 +208,15 @@ export async function updateTicketDescriptionClient(
     .eq("id", ticketId);
 
   if (error) return { error: `Erreur : ${error.message}` };
+
+  const { logHistorique } = await import("@/lib/historique");
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "description",
+    ancienneValeur: null,
+    nouvelleValeur: description ?? null,
+    changedBy: userId,
+  });
 
   revalidatePath(`/dashboard/tickets/${ticketId}`);
   revalidatePath("/dashboard/tickets");
@@ -226,6 +252,15 @@ export async function updateTicketPrioriteClient(
     .eq("id", ticketId);
 
   if (error) return { error: `Erreur : ${error.message}` };
+
+  const { logHistorique } = await import("@/lib/historique");
+  await logHistorique(supabase, {
+    ticketId,
+    champ: "priorite",
+    ancienneValeur: null,
+    nouvelleValeur: priorite,
+    changedBy: userId,
+  });
 
   revalidatePath(`/dashboard/tickets/${ticketId}`);
   revalidatePath("/dashboard/tickets");
@@ -313,6 +348,12 @@ export async function validerTicketClient(
     .eq("id", ticketId);
 
   if (updateError) return { error: `Erreur : ${updateError.message}` };
+
+  // Désassigner via service role — le trigger bloque assigne_a pour les clients
+  await createAdminClient()
+    .from("tickets")
+    .update({ assigne_a: null })
+    .eq("id", ticketId);
 
   // Historique dans les deux tables — ticket_statut_historique pour le
   // calendrier, ticket_historique pour la timeline de la fiche.

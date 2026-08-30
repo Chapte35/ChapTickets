@@ -32,7 +32,6 @@ export function ValidationClientPanel({
   demandeEnCours: { statut: DemandeReouvertureStatut } | null;
 }) {
   const [mode, setMode] = useState<Mode>(null);
-
   const [validerState, validerAction, validerPending] = useActionState(
     validerTicketClient,
     initialState

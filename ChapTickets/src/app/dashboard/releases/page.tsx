@@ -69,7 +69,7 @@ export default async function DashboardReleasesPage({
     .from("releases")
     .select("id, projet_id, nom, date, description")
     .in("projet_id", projetIds)
-    .order("date", { ascending: true });
+    .order("date", { ascending: false });
 
   const releaseIds = (releasesData ?? []).map((r) => r.id);
 

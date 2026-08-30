@@ -55,7 +55,7 @@ function ClientPriorityForm({
     initialState
   );
 
-  useToastOnSuccess(isPending, state.error, "Priorité mise à jour.");
+  useToastOnSuccess(isPending, state.error, "Priorité mise à jour.", () => window.dispatchEvent(new CustomEvent("ticket-historique-refresh")));
 
   return (
     <form action={formAction} className="flex items-end gap-2">
@@ -99,7 +99,7 @@ function ClientTypeForm({
   currentType: TicketType | null;
 }) {
   const [state, formAction, isPending] = useActionState(updateTicketTypeClient, initialState);
-  useToastOnSuccess(isPending, state.error, "Type mis à jour.");
+  useToastOnSuccess(isPending, state.error, "Type mis à jour.", () => window.dispatchEvent(new CustomEvent("ticket-historique-refresh")));
 
   return (
     <form action={formAction} className="flex items-end gap-2">

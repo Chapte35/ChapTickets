@@ -35,11 +35,21 @@ export default async function ClientTicketsPage({
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
       : query.order("numero", { ascending: tri === "ancien" });
 
-  if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);
   if (params.projet) query = query.eq("projet_id", params.projet);
-  // Par défaut on masque les tickets fermés et résolus — param inclure_fermes=1 pour les voir
-  if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
+  // La liste "Mes tickets" ne montre que les tickets en_attente_client :
+  // ce sont les seuls où le client est le prochain acteur (validation ou bug report).
+  // Les autres statuts (ouvert, en_cours) sont du ressort de l'admin.
+  // Le filtre statut manuel permet de voir les autres si besoin (filtre explicit).
+  if (params.statut) {
+    query = query.eq("statut", params.statut);
+  } else {
+    // Par défaut : tickets en attente client ET assignés à ce client
+    // = tickets qui attendent une action de sa part
+    query = query
+      .eq("statut", "en_attente_client")
+      .eq("assigne_a", user.id);
+  }
 
   const [{ data: tickets, error }, projets] = await Promise.all([
     query,
@@ -76,7 +86,7 @@ export default async function ClientTicketsPage({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Mes tickets</h1>
+        <h1 className="text-lg font-semibold">Mes tickets <span className="text-sm font-normal text-muted-foreground">— en attente de votre retour</span></h1>
         <Button asChild size="sm">
           <Link href="/dashboard/tickets/new">Nouveau ticket</Link>
         </Button>
