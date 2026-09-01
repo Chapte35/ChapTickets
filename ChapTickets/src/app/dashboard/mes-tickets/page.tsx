@@ -41,11 +41,14 @@ export default async function MesTicketsPage({
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
       : query.order("rang_projet", { ascending: tri === "ancien" });
 
-  if (params.statut) query = query.eq("statut", params.statut);
+  if (params.statut) {
+    query = query.eq("statut", params.statut);
+  } else {
+    // Par défaut : uniquement en_attente_client — tickets qui attendent une action du client
+    query = query.eq("statut", "en_attente_client");
+  }
   if (params.priorite) query = query.eq("priorite", params.priorite);
   if (params.projet) query = query.eq("projet_id", params.projet);
-  // Par défaut on masque les tickets fermés et résolus
-  if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
   const [{ data: tickets, error }, projets] = await Promise.all([
     query,

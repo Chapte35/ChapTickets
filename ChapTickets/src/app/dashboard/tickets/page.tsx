@@ -41,15 +41,8 @@ export default async function ClientTicketsPage({
   // ce sont les seuls où le client est le prochain acteur (validation ou bug report).
   // Les autres statuts (ouvert, en_cours) sont du ressort de l'admin.
   // Le filtre statut manuel permet de voir les autres si besoin (filtre explicit).
-  if (params.statut) {
-    query = query.eq("statut", params.statut);
-  } else {
-    // Par défaut : tickets en attente client ET assignés à ce client
-    // = tickets qui attendent une action de sa part
-    query = query
-      .eq("statut", "en_attente_client")
-      .eq("assigne_a", user.id);
-  }
+  if (params.statut) query = query.eq("statut", params.statut);
+  if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
   const [{ data: tickets, error }, projets] = await Promise.all([
     query,
