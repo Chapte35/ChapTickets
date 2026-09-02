@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getTousLesProjets } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
@@ -13,6 +14,12 @@ export default async function AdminTicketsPage({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
+
+  // Le filtre projet vient de l'URL en priorité (action explicite de l'utilisateur),
+  // sinon du cookie posé par le sélecteur de la sidebar.
+  const cookieStore = await cookies();
+  const projetCookie = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
+  const projetFiltre = params.projet ?? projetCookie ?? undefined;
 
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
@@ -34,7 +41,7 @@ export default async function AdminTicketsPage({
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);
-  if (params.projet) query = query.eq("projet_id", params.projet);
+  if (projetFiltre) query = query.eq("projet_id", projetFiltre);
   if (params.client) query = query.eq("client_id", params.client);
   // Par défaut on masque les tickets fermés et résolus — param inclure_fermes=1 pour les voir
   if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
@@ -64,7 +71,7 @@ export default async function AdminTicketsPage({
         </div>
       </div>
 
-      <TicketFiltersBar projets={projets} clients={clients ?? []} />
+      <TicketFiltersBar projets={projets} clients={clients ?? []} projetInitial={projetFiltre} />
 
       {error && (
         <p className="text-sm text-destructive">

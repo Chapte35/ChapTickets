@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import {
   Card,
@@ -18,16 +19,11 @@ import { getProjetOverviewData } from "@/lib/queries/overview";
 import { getClientDashboardData } from "@/lib/queries/dashboard";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { TICKET_STATUT_LABELS, PROJET_STATUT_LABELS, type ProjetStatut, type TicketStatut } from "@/lib/types";
-import { DashboardProjetSync } from "@/components/dashboard-projet-sync";
 import { notFound } from "next/navigation";
 
-export default async function ClientDashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  const params = await searchParams;
-  const projetId = params.projet ?? undefined;
+export default async function ClientDashboardPage() {
+  const cookieStore = await cookies();
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? undefined;
 
   const supabase = await createClient();
   const {
@@ -39,8 +35,6 @@ export default async function ClientDashboardPage({
   const projets = await getProjetsDuClient(supabase, user.id);
 
   // ── CAS 1 : projet sélectionné via sidebar ──────────────────────────────
-  // On affiche l'overview complet de ce projet (KPIs, charts, kanban, releases)
-  // sans redirect — l'utilisateur reste sur /dashboard.
   if (projetId) {
     const result = await getProjetOverviewData(supabase, projetId);
     if (!result.ok) {
@@ -59,7 +53,6 @@ export default async function ClientDashboardPage({
 
     const { projet, stats, kanbanItems, releasesAvecProgression } = result;
 
-    // Fetch les tickets par release pour ClientReleasesView avec accordéon
     const releaseIds = releasesAvecProgression.map((r) => r.id);
     const { data: ticketsParRelease } = releaseIds.length > 0
       ? await supabase
@@ -91,8 +84,6 @@ export default async function ClientDashboardPage({
 
     return (
       <div className="flex flex-col gap-4">
-        <DashboardProjetSync projets={projets} />
-
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold">{projet.nom}</h1>
@@ -171,7 +162,6 @@ export default async function ClientDashboardPage({
 
   // ── CAS 2 : 2+ projets, aucun sélectionné → vue d'ensemble multi-projets ─
   if (projets.length > 1) {
-    // Charger les tickets de tous les projets du client pour avoir des KPIs par projet
     const { data: tousLesTickets } = await supabase
       .from("tickets")
       .select("id, statut, priorite, projet_id");
@@ -187,7 +177,6 @@ export default async function ClientDashboardPage({
 
     return (
       <div className="flex flex-col gap-4">
-        <DashboardProjetSync projets={projets} />
         <div>
           <h1 className="text-lg font-semibold">Mes projets</h1>
           <p className="text-sm text-muted-foreground">
@@ -225,8 +214,7 @@ export default async function ClientDashboardPage({
     );
   }
 
-  // ── CAS 3 : 1 projet, pas de sidebar actif → vue générique filtrée ───────
-  // (0 projet = même vue sans filtre)
+  // ── CAS 3 : 1 projet ou 0 → vue générique ────────────────────────────────
   const projetUnique = projets[0] ?? null;
   const { recents, nonLus } = await getClientDashboardData(
     supabase,
@@ -235,51 +223,48 @@ export default async function ClientDashboardPage({
   );
 
   return (
-    <>
-      <DashboardProjetSync projets={projets} />
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Messages non lus</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {nonLus.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4">Rien de nouveau.</p>
-            )}
-            {nonLus.length > 0 && (
-              <ul className="flex flex-col divide-y">
-                {nonLus.map((t) => (
-                  <li key={t.id}>
-                    <Link
-                      href={`/dashboard/tickets/${t.id}`}
-                      className="flex items-center justify-between gap-4 py-2.5 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{t.titre}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {TICKET_STATUT_LABELS[t.statut]}
-                        </span>
-                      </div>
-                      <Badge>
-                        {t.nonLus} nouveau{t.nonLus > 1 ? "x" : ""}
-                      </Badge>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Messages non lus</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {nonLus.length === 0 && (
+            <p className="text-sm text-muted-foreground py-4">Rien de nouveau.</p>
+          )}
+          {nonLus.length > 0 && (
+            <ul className="flex flex-col divide-y">
+              {nonLus.map((t) => (
+                <li key={t.id}>
+                  <Link
+                    href={`/dashboard/tickets/${t.id}`}
+                    className="flex items-center justify-between gap-4 py-2.5 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{t.titre}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {TICKET_STATUT_LABELS[t.statut]}
+                      </span>
+                    </div>
+                    <Badge>
+                      {t.nonLus} nouveau{t.nonLus > 1 ? "x" : ""}
+                    </Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Mes tickets récents</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TicketList tickets={recents} basePath="/dashboard/tickets" />
-          </CardContent>
-        </Card>
-      </div>
-    </>
+      <Card>
+        <CardHeader>
+          <CardTitle>Mes tickets récents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TicketList tickets={recents} basePath="/dashboard/tickets" />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

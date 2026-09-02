@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 import { getTousLesProjets } from "@/lib/queries/tickets";
+import { ProjetRefreshListener } from "@/components/projet-refresh-listener";
 
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
@@ -47,6 +48,7 @@ export default async function AdminLayout({
 
   const cookieStore = await cookies();
   const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
+  const projetInitial = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
 
   const projets = await getTousLesProjets(supabase);
 
@@ -59,7 +61,9 @@ export default async function AdminLayout({
         logoutAction={logout}
         basePath="/admin"
         projets={projets}
+        projetInitial={projetInitial}
       />
+      <ProjetRefreshListener />
       <main className="flex-1 h-dvh overflow-y-auto overflow-x-auto p-6">{children}</main>
     </div>
   );

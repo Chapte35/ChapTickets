@@ -122,6 +122,7 @@ export function AppSidebar({
   footer,
   basePath,
   projets = [],
+  projetInitial,
 }: {
   title: string;
   items: SidebarItem[];
@@ -133,6 +134,8 @@ export function AppSidebar({
   basePath: "/admin" | "/dashboard";
   /** Projets accessibles par l'utilisateur courant — alimente le sélecteur de projet. */
   projets?: ProjetOption[];
+  /** Projet pré-sélectionné lu depuis le cookie côté serveur — évite le flash au montage. */
+  projetInitial?: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const pathname = usePathname();
@@ -176,6 +179,7 @@ export function AppSidebar({
         projets={projets}
         collapsed={collapsed}
         basePath={basePath}
+        projetInitial={projetInitial}
       />
 
       <div className="px-2 pb-2">

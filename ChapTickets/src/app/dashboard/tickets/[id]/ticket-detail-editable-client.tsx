@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { InlineEditField } from "@/components/inline-edit-field";
 import { TicketTagsEditor } from "@/components/ticket-tags-editor";
@@ -98,13 +98,24 @@ function ClientTypeForm({
   ticketId: string;
   currentType: TicketType | null;
 }) {
+  const [typeLocal, setTypeLocal] = useState<string>(currentType ?? AUCUN_TYPE);
+  const [formKey, setFormKey] = useState(0);
   const [state, formAction, isPending] = useActionState(updateTicketTypeClient, initialState);
-  useToastOnSuccess(isPending, state.error, "Type mis à jour.", () => window.dispatchEvent(new CustomEvent("ticket-historique-refresh")));
+
+  useToastOnSuccess(isPending, state.error, "Type mis à jour.", () => {
+    window.dispatchEvent(new CustomEvent("ticket-historique-refresh"));
+    // Forcer le remount du Select après succès pour éviter la valeur figée
+    setFormKey((k) => k + 1);
+  });
 
   return (
-    <form action={formAction} className="flex items-end gap-2">
+    <form key={formKey} action={formAction} className="flex items-end gap-2">
       <input type="hidden" name="ticket_id" value={ticketId} />
-      <Select name="type_ticket" defaultValue={currentType ?? AUCUN_TYPE}>
+      <Select
+        name="type_ticket"
+        value={typeLocal}
+        onValueChange={setTypeLocal}
+      >
         <SelectTrigger size="sm" className="w-[200px]">
           <SelectValue placeholder="Aucun type" />
         </SelectTrigger>

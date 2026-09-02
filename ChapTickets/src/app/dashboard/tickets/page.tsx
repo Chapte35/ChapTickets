@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
@@ -19,6 +20,10 @@ export default async function ClientTicketsPage({
 
   if (!user) return null;
 
+  const cookieStore = await cookies();
+  const projetCookie = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
+  const projetFiltre = params.projet ?? projetCookie ?? undefined;
+
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
     : "recent";
@@ -36,7 +41,7 @@ export default async function ClientTicketsPage({
       : query.order("numero", { ascending: tri === "ancien" });
 
   if (params.priorite) query = query.eq("priorite", params.priorite);
-  if (params.projet) query = query.eq("projet_id", params.projet);
+  if (projetFiltre) query = query.eq("projet_id", projetFiltre);
   // La liste "Mes tickets" ne montre que les tickets en_attente_client :
   // ce sont les seuls où le client est le prochain acteur (validation ou bug report).
   // Les autres statuts (ouvert, en_cours) sont du ressort de l'admin.
@@ -85,7 +90,7 @@ export default async function ClientTicketsPage({
         </Button>
       </div>
 
-      <TicketFiltersBar projets={projets} />
+      <TicketFiltersBar projets={projets} projetInitial={projetFiltre} />
 
       {error && (
         <p className="text-sm text-destructive">

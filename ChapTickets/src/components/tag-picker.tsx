@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { TAG_COLOR_CLASSES, type Tag } from "@/lib/types";
 
@@ -13,17 +13,27 @@ export function TagPicker({
   tags: Tag[];
   name?: string;
   defaultSelected?: string[];
-  /** Optionnel : reçoit la liste des tags sélectionnés à chaque changement. Sert à l'aperçu live (création de ticket), pas nécessaire pour un simple usage dans un formulaire. */
+  /** Optionnel : reçoit la liste des tags sélectionnés à chaque changement.
+   *  Sert à l'aperçu live (création de ticket), pas nécessaire pour un usage
+   *  simple dans un formulaire. */
   onSelectionChange?: (tagsSelectionnes: Tag[]) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(defaultSelected));
+
+  // Notifier le parent APRÈS le render, via useEffect, pour éviter le
+  // "setState on a different component while rendering" (CHAP#20).
+  useEffect(() => {
+    onSelectionChange?.(tags.filter((t) => selected.has(t.id)));
+    // On veut déclencher l'effet uniquement quand selected change,
+    // pas à chaque re-render du parent (onSelectionChange est recréée à chaque render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      onSelectionChange?.(tags.filter((t) => next.has(t.id)));
       return next;
     });
   }

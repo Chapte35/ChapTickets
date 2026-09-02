@@ -78,7 +78,16 @@ export function GlobalCommandMenu({ basePath }: { basePath: "/admin" | "/dashboa
                 onSelect={() => aller(`${basePath}/tickets/${t.id}`)}
               >
                 <Ticket />
-                <span className="font-mono text-xs text-muted-foreground shrink-0">{t.ref}</span>
+                <span className="font-mono text-xs text-muted-foreground shrink-0">
+                  {t.ref}
+                </span>
+                {/* Si pas de code court, on affiche le nom du projet pour
+                    lever l'ambiguïté (#1 seul ne dit pas d'où ça vient) */}
+                {t.projet_nom && (
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {t.projet_nom}
+                  </span>
+                )}
                 <span className="truncate">{t.titre}</span>
               </CommandItem>
             ))}

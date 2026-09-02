@@ -1,15 +1,14 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getTousLesProjets, getClientsParProjet } from "@/lib/queries/tickets";
 import type { ClientOption } from "@/lib/queries/tickets";
 import { MailingBoard } from "./mailing-board";
 import type { ReleaseAvecStatutNotif } from "./mailing-board";
 
-export default async function MailingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  const params = await searchParams;
+export default async function MailingPage() {
+  const cookieStore = await cookies();
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
+
   const supabase = await createClient();
 
   const [projets, clientsParProjet] = await Promise.all([
@@ -17,20 +16,18 @@ export default async function MailingPage({
     getClientsParProjet(supabase),
   ]);
 
-  // ── Releases filtrées par projet (ou toutes) ─────────────────────────────
   let releasesQuery = supabase
     .from("releases")
     .select("id, projet_id, nom, date, description, projets(nom, code_court)")
     .order("date", { ascending: false });
 
-  if (params.projet) {
-    releasesQuery = releasesQuery.eq("projet_id", params.projet);
+  if (projetId) {
+    releasesQuery = releasesQuery.eq("projet_id", projetId);
   }
 
   const { data: releasesRaw } = await releasesQuery;
   const releases = releasesRaw ?? [];
 
-  // ── Notifications déjà envoyées pour ces releases ────────────────────────
   const releaseIds = releases.map((r) => r.id);
   const { data: notifRaw } = releaseIds.length > 0
     ? await supabase
@@ -39,7 +36,6 @@ export default async function MailingPage({
         .in("release_id", releaseIds)
     : { data: [] };
 
-  // Indexé par release_id → Map<client_id, {envoyee_le, declencheur}>
   const notifParRelease: Record<
     string,
     Record<string, { envoyee_le: string; declencheur: string }>
@@ -52,7 +48,6 @@ export default async function MailingPage({
     };
   }
 
-  // ── Construction de la vue enrichie ─────────────────────────────────────
   const releasesAvecStatut: ReleaseAvecStatutNotif[] = releases.map((r) => {
     const projet = r.projets as unknown as { nom: string; code_court: string | null } | null;
     const clientsDuProjet: ClientOption[] = clientsParProjet[r.projet_id] ?? [];
@@ -100,7 +95,7 @@ export default async function MailingPage({
       <MailingBoard
         releases={releasesAvecStatut}
         projets={projets}
-        projetIdActuel={params.projet ?? null}
+        projetIdActuel={projetId}
       />
     </div>
   );

@@ -1,7 +1,7 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { ClientReleasesView } from "./client-releases-view";
-import { DashboardProjetSync } from "@/components/dashboard-projet-sync";
 import type { TicketStatut, TicketPriorite, TicketType } from "@/lib/types";
 
 export type ReleaseAvecTickets = {
@@ -30,12 +30,10 @@ export type ProjetAvecReleases = {
   releases: ReleaseAvecTickets[];
 };
 
-export default async function DashboardReleasesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  const params = await searchParams;
+export default async function DashboardReleasesPage() {
+  const cookieStore = await cookies();
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -48,7 +46,6 @@ export default async function DashboardReleasesPage({
   if (projets.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <DashboardProjetSync projets={projets} />
         <h1 className="text-lg font-semibold">Releases</h1>
         <p className="text-sm text-muted-foreground">
           Aucun projet rattaché à votre compte pour l&apos;instant.
@@ -57,13 +54,11 @@ export default async function DashboardReleasesPage({
     );
   }
 
-  // Si un projet est sélectionné dans la sidebar, on filtre sur ce projet uniquement
-  // (après validation qu'il appartient bien au client — RLS garantit ça de toute façon)
-  const projetFiltre = params.projet && projets.some((p) => p.id === params.projet)
-    ? params.projet
+  // Filtre sur le projet du cookie si valide, sinon tous les projets du client
+  const projetValide = projetId && projets.some((p) => p.id === projetId)
+    ? projetId
     : null;
-
-  const projetIds = projetFiltre ? [projetFiltre] : projets.map((p) => p.id);
+  const projetIds = projetValide ? [projetValide] : projets.map((p) => p.id);
 
   const { data: releasesData } = await supabase
     .from("releases")
@@ -89,7 +84,6 @@ export default async function DashboardReleasesPage({
     ticketsParRelease.set(releaseId, liste);
   }
 
-  // Projets filtrés (un seul si filtre actif, tous sinon)
   const projetsPourVue = projets.filter((p) => projetIds.includes(p.id));
 
   const projetsAvecReleases: ProjetAvecReleases[] = projetsPourVue
@@ -107,12 +101,11 @@ export default async function DashboardReleasesPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <DashboardProjetSync projets={projets} />
       <h1 className="text-lg font-semibold">Releases</h1>
       {projetsAvecReleases.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Aucune release n&apos;a encore été créée sur{" "}
-          {projetFiltre ? "ce projet" : "vos projets"}.
+          {projetValide ? "ce projet" : "vos projets"}.
         </p>
       ) : (
         <ClientReleasesView projets={projetsAvecReleases} />

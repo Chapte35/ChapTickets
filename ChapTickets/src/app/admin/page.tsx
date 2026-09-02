@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import {
   Card,
@@ -30,18 +31,13 @@ import { TicketStatusDonut } from "@/components/charts/ticket-status-donut";
 import { TicketsOverTimeChart } from "@/components/charts/tickets-over-time-chart";
 import { PriorityBarChart } from "@/components/charts/priority-bar-chart";
 import { ChartResolutionProjets } from "@/components/dashboard/chart-resolution-projets";
-import { DashboardProjetSync } from "@/components/dashboard-projet-sync";
 import { getTousLesProjets } from "@/lib/queries/tickets";
 import { getReleasesDuProjet, calculerProgressionReleases } from "@/lib/queries/releases";
 import { ReleaseProgressList } from "@/components/release-progress-list";
 
-export default async function AdminHomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  const params = await searchParams;
-  const projetId = params.projet ?? undefined;
+export default async function AdminHomePage() {
+  const cookieStore = await cookies();
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? undefined;
 
   const supabase = await createClient();
 
@@ -55,13 +51,8 @@ export default async function AdminHomePage({
   ] = await Promise.all([
     getAdminDashboardData(supabase, projetId),
     projetId
-      ? supabase
-          .from("tickets")
-          .select("id, statut, priorite, created_at, updated_at")
-          .eq("projet_id", projetId)
-      : supabase
-          .from("tickets")
-          .select("id, statut, priorite, created_at, updated_at"),
+      ? supabase.from("tickets").select("id, statut, priorite, created_at, updated_at").eq("projet_id", projetId)
+      : supabase.from("tickets").select("id, statut, priorite, created_at, updated_at"),
     getResolutionParProjet(supabase, "semaine", projetId),
     supabase.from("projets").select("id, nom").order("nom"),
     getTousLesProjets(supabase),
@@ -81,8 +72,6 @@ export default async function AdminHomePage({
 
   return (
     <div className="flex flex-col gap-4">
-      <DashboardProjetSync projets={projets} />
-
       {projetActif && (
         <p className="text-xs text-muted-foreground">
           Filtré sur le projet <span className="font-medium text-foreground">{projetActif.nom}</span>
@@ -206,14 +195,13 @@ export default async function AdminHomePage({
             </CardContent>
           </Card>
 
-          {/* Releases — uniquement si un projet est sélectionné */}
           {projetId && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Releases</CardTitle>
                   <Link
-                    href={`/admin/releases?projet=${projetId}`}
+                    href="/admin/releases"
                     className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
                   >
                     Gérer →

@@ -5,6 +5,7 @@ import { logout } from "@/app/login/actions";
 import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { NotifBadge } from "@/components/notif-badge";
+import { ProjetRefreshListener } from "@/components/projet-refresh-listener";
 
   const navItems: SidebarItem[] = [
     { href: "/dashboard", label: "Mon espace", icon: "home" },
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
 
   const cookieStore = await cookies();
   const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
+  const projetInitial = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
 
   const projets = await getProjetsDuClient(supabase, user.id);
 
@@ -50,7 +52,9 @@ export default async function DashboardLayout({
         logoutAction={logout}
         basePath="/dashboard"
         projets={projets}
+        projetInitial={projetInitial}
       />
+      <ProjetRefreshListener />
       <main className="flex-1 h-dvh overflow-y-auto overflow-x-auto p-6">{children}</main>
     </div>
   );

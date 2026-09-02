@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getTousLesProjets, getClientsParProjet } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
@@ -23,12 +24,14 @@ export default async function ReleasesPage({
   const params = await searchParams;
   const supabase = await createClient();
 
+  const cookieStore = await cookies();
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
+
   const [projets, clientsParProjet] = await Promise.all([
     getTousLesProjets(supabase),
     getClientsParProjet(supabase),
   ]);
 
-  // Toutes les releases existantes pour le mode édition
   const { data: releasesData } = await supabase
     .from("releases")
     .select("id, projet_id, nom, date, description")
@@ -47,9 +50,7 @@ export default async function ReleasesPage({
 
   let query = supabase
     .from("tickets_avec_rang")
-    .select(
-      "id, rang_projet, titre, description, statut, priorite, created_at, projets(nom, code_court)"
-    )
+    .select("id, rang_projet, titre, description, statut, priorite, created_at, projets(nom, code_court)")
     .is("release_id", null);
 
   query =
@@ -59,7 +60,7 @@ export default async function ReleasesPage({
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);
-  if (params.projet) query = query.eq("projet_id", params.projet);
+  if (projetId) query = query.eq("projet_id", projetId);
   if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
   const { data: tickets } = await query;
@@ -70,13 +71,13 @@ export default async function ReleasesPage({
         <h1 className="text-lg font-semibold">Releases</h1>
       </div>
 
-      <TicketFiltersBar projets={projets} />
+      <TicketFiltersBar />
 
       <ReleasesBoardClient
-        key={JSON.stringify(params)}
+        key={JSON.stringify({ ...params, projetId })}
         tickets={(tickets ?? []) as unknown as TicketSansRelease[]}
         projets={projets}
-        projetIdActuel={params.projet ?? null}
+        projetIdActuel={projetId}
         clientsParProjet={clientsParProjet}
         releases={releases}
       />
