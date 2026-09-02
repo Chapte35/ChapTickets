@@ -6,11 +6,13 @@ import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { NotifBadge } from "@/components/notif-badge";
 import { ProjetRefreshListener } from "@/components/projet-refresh-listener";
+import { NotifDemandesClientBadge } from "@/components/notif-demandes-badge";
 
   const navItems: SidebarItem[] = [
     { href: "/dashboard", label: "Mon espace", icon: "home" },
     { href: "/dashboard/tickets", label: "Tickets", icon: "tickets" },
     { href: "/dashboard/mes-tickets", label: "Mes tickets", icon: "mes_tickets", badge: <NotifBadge /> },
+    { href: "/dashboard/demandes-reouverture", label: "Réouvertures", icon: "reouvertures", badge: <NotifDemandesClientBadge /> },
     { href: "/dashboard/releases", label: "Releases", icon: "releases" },
     { href: "/dashboard/calendrier", label: "Calendrier", icon: "calendrier" },
     { href: "/dashboard/messagerie", label: "Messagerie", icon: "messagerie" },

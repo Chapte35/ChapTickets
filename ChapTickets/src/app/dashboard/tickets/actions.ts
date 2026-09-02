@@ -453,3 +453,27 @@ export async function postMessageClient(
   revalidatePath(`/dashboard/tickets/${ticketId}`);
   return { error: null };
 }
+
+export async function acknowledgerDemande(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, isClient, userId } = await requireClient();
+  if (!isClient || !userId) return { error: "Action réservée aux clients." };
+
+  const demandeId = formData.get("demande_id");
+  if (typeof demandeId !== "string" || !demandeId) {
+    return { error: "Demande invalide." };
+  }
+
+  const { error } = await supabase
+    .from("demandes_reouverture")
+    .update({ acknowledged_at: new Date().toISOString() })
+    .eq("id", demandeId)
+    .eq("demande_par", userId); // sécurité : uniquement ses propres demandes
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/demandes-reouverture");
+  return { error: null };
+}

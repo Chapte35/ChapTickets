@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DEMANDE_REOUVERTURE_STATUT_LABELS,
   type DemandeReouvertureStatut,
@@ -18,6 +19,7 @@ export type DemandeReouverture = {
   statut: DemandeReouvertureStatut;
   created_at: string;
   nouveau_ticket_id: string | null;
+  commentaire_refus: string | null;
   profiles: { email: string | null; full_name: string | null } | null;
 };
 
@@ -32,35 +34,47 @@ function DecisionButtons({
     traiterDemandeReouverture,
     initialState
   );
+  const [showRefus, setShowRefus] = useState(false);
 
   return (
-    <form action={formAction} className="flex items-center gap-2">
+    <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="ticket_id" value={ticketId} />
       <input type="hidden" name="demande_id" value={demandeId} />
-      <Button
-        type="submit"
-        name="decision"
-        value="acceptee"
-        size="sm"
-        disabled={isPending}
-      >
-        Accepter
-      </Button>
-      <Button
-        type="submit"
-        name="decision"
-        value="refusee"
-        size="sm"
-        variant="outline"
-        disabled={isPending}
-      >
-        Refuser
-      </Button>
-      {state.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
+      {showRefus && (
+        <Textarea
+          name="commentaire_refus"
+          placeholder="Motif du refus (optionnel, visible par le client)"
+          rows={2}
+          className="text-sm"
+        />
       )}
+      <div className="flex items-center gap-2">
+        <Button type="submit" name="decision" value="acceptee" size="sm" disabled={isPending}>
+          Accepter
+        </Button>
+        {!showRefus ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setShowRefus(true)}
+          >
+            Refuser
+          </Button>
+        ) : (
+          <Button type="submit" name="decision" value="refusee" size="sm" variant="outline" disabled={isPending}>
+            Confirmer le refus
+          </Button>
+        )}
+        {showRefus && (
+          <Button type="button" size="sm" variant="ghost" onClick={() => setShowRefus(false)}>
+            Annuler
+          </Button>
+        )}
+        {state.error && (
+          <p role="alert" className="text-sm text-destructive">{state.error}</p>
+        )}
+      </div>
     </form>
   );
 }
@@ -89,6 +103,11 @@ export function ReopenRequestsPanel({
           </div>
           {d.message && (
             <p className="text-sm text-muted-foreground">{d.message}</p>
+          )}
+          {d.commentaire_refus && (
+            <p className="text-sm text-muted-foreground italic">
+              Motif du refus : {d.commentaire_refus}
+            </p>
           )}
           {d.statut === "acceptee" && d.nouveau_ticket_id && (
             <Link

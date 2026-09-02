@@ -5,10 +5,12 @@ import { logout } from "@/app/login/actions";
 import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
 import { getTousLesProjets } from "@/lib/queries/tickets";
 import { ProjetRefreshListener } from "@/components/projet-refresh-listener";
+import { NotifDemandesAdminBadge } from "@/components/notif-demandes-badge";
 
 const NAV_ITEMS: SidebarItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
+  { href: "/admin/demandes-reouverture", label: "Réouvertures", icon: "reouvertures", badge: <NotifDemandesAdminBadge /> },
   { href: "/admin/releases", label: "Releases", icon: "releases" },
   { href: "/admin/calendrier", label: "Calendrier", icon: "calendrier" },
   { href: "/admin/messagerie", label: "Messagerie", icon: "messagerie" },

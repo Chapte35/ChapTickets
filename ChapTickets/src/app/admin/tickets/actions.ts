@@ -357,6 +357,9 @@ export async function traiterDemandeReouverture(
   const demandeId = formData.get("demande_id");
   const ticketId = formData.get("ticket_id");
   const decision = formData.get("decision"); // "acceptee" | "refusee"
+  const commentaireRefus = typeof formData.get("commentaire_refus") === "string"
+    ? (formData.get("commentaire_refus") as string).trim() || null
+    : null;
 
   if (
     typeof demandeId !== "string" ||
@@ -500,6 +503,7 @@ export async function traiterDemandeReouverture(
       traitee_at: new Date().toISOString(),
       traitee_par: userId,
       nouveau_ticket_id: nouveauTicketId,
+      commentaire_refus: decision === "refusee" ? commentaireRefus : null,
     })
     .eq("id", demandeId);
 
@@ -510,6 +514,7 @@ export async function traiterDemandeReouverture(
   revalidatePath(`/admin/tickets/${ticketId}`);
   if (nouveauTicketId) revalidatePath(`/admin/tickets/${nouveauTicketId}`);
   revalidatePath("/admin/tickets");
+  revalidatePath("/admin/demandes-reouverture");
   return { error: null };
 }
 
