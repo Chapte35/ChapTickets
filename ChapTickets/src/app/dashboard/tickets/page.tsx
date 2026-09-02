@@ -20,9 +20,9 @@ export default async function ClientTicketsPage({
 
   if (!user) return null;
 
+  // Le projet est géré exclusivement par le cookie écrit par la sidebar.
   const cookieStore = await cookies();
-  const projetCookie = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
-  const projetFiltre = params.projet ?? projetCookie ?? undefined;
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
 
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
@@ -32,20 +32,13 @@ export default async function ClientTicketsPage({
     .from("tickets_avec_rang")
     .select("id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, created_by, assigne_a, projets(nom, code_court)");
 
-  // On trie par `numero` (clé technique croissante) et non `rang_projet`
-  // (rang calculé dans la vue qui peut varier selon le filtre projet actif).
-  // rang_projet sert à l'affichage, numero à l'ordre de création réel.
   query =
     tri === "echeance"
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
       : query.order("numero", { ascending: tri === "ancien" });
 
   if (params.priorite) query = query.eq("priorite", params.priorite);
-  if (projetFiltre) query = query.eq("projet_id", projetFiltre);
-  // La liste "Mes tickets" ne montre que les tickets en_attente_client :
-  // ce sont les seuls où le client est le prochain acteur (validation ou bug report).
-  // Les autres statuts (ouvert, en_cours) sont du ressort de l'admin.
-  // Le filtre statut manuel permet de voir les autres si besoin (filtre explicit).
+  if (projetId) query = query.eq("projet_id", projetId);
   if (params.statut) query = query.eq("statut", params.statut);
   if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
@@ -54,7 +47,6 @@ export default async function ClientTicketsPage({
     getProjetsDuClient(supabase, user.id),
   ]);
 
-  // Récupère les profils des créateurs et assignés en une seule query
   const ticketsList = tickets ?? [];
   const profilIds = [...new Set([
     ...ticketsList.map((t) => (t as unknown as { created_by: string | null }).created_by),
@@ -81,6 +73,11 @@ export default async function ClientTicketsPage({
     };
   });
 
+  // projets sert uniquement à valider que le cookie projet est encore valide
+  // pour cet utilisateur (si le projet a été retiré de son accès).
+  // La sidebar gère déjà ça, mais on garde la query pour le ProjetSelectorSidebar.
+  void projets;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -90,7 +87,7 @@ export default async function ClientTicketsPage({
         </Button>
       </div>
 
-      <TicketFiltersBar projets={projets} projetInitial={projetFiltre} />
+      <TicketFiltersBar />
 
       {error && (
         <p className="text-sm text-destructive">

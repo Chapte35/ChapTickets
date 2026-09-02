@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getProjetsDuClient } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
 import { ClientTicketsTable, type ClientTicketRow } from "@/app/dashboard/tickets/client-tickets-table";
 import { TICKET_TRIS, type TicketTri } from "@/lib/types";
@@ -44,16 +43,11 @@ export default async function MesTicketsPage({
   if (params.statut) {
     query = query.eq("statut", params.statut);
   } else {
-    // Par défaut : uniquement en_attente_client — tickets qui attendent une action du client
     query = query.eq("statut", "en_attente_client");
   }
   if (params.priorite) query = query.eq("priorite", params.priorite);
-  if (params.projet) query = query.eq("projet_id", params.projet);
 
-  const [{ data: tickets, error }, projets] = await Promise.all([
-    query,
-    getProjetsDuClient(supabase, user.id),
-  ]);
+  const { data: tickets, error } = await query;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,7 +60,7 @@ export default async function MesTicketsPage({
         </div>
       </div>
 
-      <TicketFiltersBar projets={projets} />
+      <TicketFiltersBar />
 
       {error && (
         <p className="text-sm text-destructive">

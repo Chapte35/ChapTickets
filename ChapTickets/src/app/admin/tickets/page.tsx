@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { getTousLesProjets } from "@/lib/queries/tickets";
 import { TicketFiltersBar } from "@/components/ticket-filters-bar";
 import { AdminTicketsTable, type AdminTicketRow } from "./admin-tickets-table";
 import { Button } from "@/components/ui/button";
@@ -15,11 +14,10 @@ export default async function AdminTicketsPage({
   const params = await searchParams;
   const supabase = await createClient();
 
-  // Le filtre projet vient de l'URL en priorité (action explicite de l'utilisateur),
-  // sinon du cookie posé par le sélecteur de la sidebar.
+  // Le projet est géré exclusivement par le cookie écrit par la sidebar.
+  // Plus de ?projet= dans l'URL.
   const cookieStore = await cookies();
-  const projetCookie = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
-  const projetFiltre = params.projet ?? projetCookie ?? undefined;
+  const projetId = cookieStore.get("chaptickets_selected_projet_id")?.value ?? null;
 
   const tri: TicketTri = TICKET_TRIS.includes(params.tri as TicketTri)
     ? (params.tri as TicketTri)
@@ -31,9 +29,6 @@ export default async function AdminTicketsPage({
       "id, rang_projet, ref_client, type_ticket, titre, description, statut, priorite, created_at, date_prevue, ticket_origine_id, release_id, sprint_id, projets(nom, code_court), profiles:profiles!tickets_client_id_fkey(email, full_name), assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email)"
     );
 
-  // "écheance" → date_prevue, nullsFirst:false pour mettre les sans-date à la fin.
-  // "recent"/"ancien" → rang_projet DESC/ASC : les tickets les plus récents du
-  // projet (numéro le plus élevé) en premier pour "recent", ordre naturel pour "ancien".
   query =
     tri === "echeance"
       ? query.order("date_prevue", { ascending: true, nullsFirst: false })
@@ -41,21 +36,18 @@ export default async function AdminTicketsPage({
 
   if (params.statut) query = query.eq("statut", params.statut);
   if (params.priorite) query = query.eq("priorite", params.priorite);
-  if (projetFiltre) query = query.eq("projet_id", projetFiltre);
+  if (projetId) query = query.eq("projet_id", projetId);
   if (params.client) query = query.eq("client_id", params.client);
-  // Par défaut on masque les tickets fermés et résolus — param inclure_fermes=1 pour les voir
   if (!params.inclure_fermes) query = query.not("statut", "in", "(ferme,resolu)");
 
-  const [{ data: tickets, error }, projets, { data: clients }] =
-    await Promise.all([
-      query,
-      getTousLesProjets(supabase),
-      supabase
-        .from("profiles")
-        .select("id, email, full_name")
-        .eq("role", "client")
-        .order("full_name"),
-    ]);
+  const [{ data: tickets, error }, { data: clients }] = await Promise.all([
+    query,
+    supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .eq("role", "client")
+      .order("full_name"),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -71,7 +63,7 @@ export default async function AdminTicketsPage({
         </div>
       </div>
 
-      <TicketFiltersBar projets={projets} clients={clients ?? []} projetInitial={projetFiltre} />
+      <TicketFiltersBar clients={clients ?? []} />
 
       {error && (
         <p className="text-sm text-destructive">
