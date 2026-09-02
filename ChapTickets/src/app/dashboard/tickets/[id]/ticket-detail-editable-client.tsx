@@ -142,6 +142,7 @@ export function TicketDetailEditableClient({
   typeTicket,
   assigneNom,
   releaseNom,
+  dateCreation,
 }: {
   ticketId: string;
   titre: string;
@@ -157,6 +158,8 @@ export function TicketDetailEditableClient({
   typeTicket?: TicketType | null;
   assigneNom?: string | null;
   releaseNom?: string | null;
+  /** ISO string — affiché en lecture seule pour aider à jauger l'ancienneté. */
+  dateCreation?: string | null;
 }) {
   return (
     <Card>
@@ -241,6 +244,24 @@ export function TicketDetailEditableClient({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground">Version</span>
             <span className="text-sm">{releaseNom}</span>
+          </div>
+        )}
+
+        {dateCreation && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Créé le</span>
+            <span className="text-xs tabular-nums">
+              {new Date(dateCreation).toLocaleDateString("fr-FR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+              {" "}
+              {new Date(dateCreation).toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }).replace(":", "h")}
+            </span>
           </div>
         )}
 

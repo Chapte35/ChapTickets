@@ -49,9 +49,8 @@ function formaterValeur(
     case "description":
       return valeur.length > 60 ? valeur.slice(0, 60) + "…" : valeur;
     case "assigne_a": {
-      // La valeur est un UUID — on résout vers le pseudo/nom du profil
       const p = profilsMap.get(valeur);
-      if (!p) return valeur; // fallback UUID si profil introuvable
+      if (!p) return valeur;
       return p.pseudo || p.full_name || p.email || valeur;
     }
     default:
@@ -68,6 +67,24 @@ const CHAMP_LABELS: Record<string, string> = {
   assigne_a: "Assigné à",
   ref_client: "Réf. client",
 };
+
+/**
+ * Formate un timestamp en "JJ/MM/AAAA HHhMM" sur une seule ligne.
+ * Ex : "02/09/2026 13h24"
+ */
+function formaterDateHeure(iso: string): string {
+  const d = new Date(iso);
+  const jour = d.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const heure = d.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).replace(":", "h");
+  return `${jour} ${heure}`;
+}
 
 function ProfilAvatar({ profil }: { profil: Profil | null }) {
   const nom = profil?.pseudo || profil?.full_name || profil?.email || "Système";
@@ -94,55 +111,52 @@ export function TicketHistorique({ ticketId }: { ticketId: string }) {
   const [loading, setLoading] = useState(true);
 
   const charger = useCallback(async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("ticket_historique")
-        .select("id, champ, ancienne_valeur, nouvelle_valeur, created_at, changed_by")
-        .eq("ticket_id", ticketId)
-        .order("created_at", { ascending: false })
-        .limit(50);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("ticket_historique")
+      .select("id, champ, ancienne_valeur, nouvelle_valeur, created_at, changed_by")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-      if (!data || data.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      // Collecter tous les UUIDs à résoudre : auteurs + valeurs assigne_a
-      const uuidsAuteurs = [...new Set(data.map((e) => e.changed_by).filter(Boolean))];
-      const uuidsAssigne = [
-        ...new Set(
-          data
-            .filter((e) => e.champ === "assigne_a")
-            .flatMap((e) => [e.ancienne_valeur, e.nouvelle_valeur])
-            .filter((v): v is string => !!v && v.length === 36)
-        ),
-      ];
-      const tousLesUuids = [...new Set([...uuidsAuteurs, ...uuidsAssigne])];
-
-      const { data: profils } = tousLesUuids.length > 0
-        ? await supabase
-            .from("profiles")
-            .select("id, full_name, email, pseudo, role, avatar_couleur, initiales")
-            .in("id", tousLesUuids)
-        : { data: [] };
-
-      const map = new Map((profils ?? []).map((p) => [p.id, p as unknown as Profil]));
-      setProfilsMap(map);
-
-      setEntrees(
-        data.map((e) => ({
-          ...e,
-          profil: map.get(e.changed_by) ?? null,
-        }))
-      );
+    if (!data || data.length === 0) {
       setLoading(false);
+      return;
+    }
+
+    const uuidsAuteurs = [...new Set(data.map((e) => e.changed_by).filter(Boolean))];
+    const uuidsAssigne = [
+      ...new Set(
+        data
+          .filter((e) => e.champ === "assigne_a")
+          .flatMap((e) => [e.ancienne_valeur, e.nouvelle_valeur])
+          .filter((v): v is string => !!v && v.length === 36)
+      ),
+    ];
+    const tousLesUuids = [...new Set([...uuidsAuteurs, ...uuidsAssigne])];
+
+    const { data: profils } = tousLesUuids.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, full_name, email, pseudo, role, avatar_couleur, initiales")
+          .in("id", tousLesUuids)
+      : { data: [] };
+
+    const map = new Map((profils ?? []).map((p) => [p.id, p as unknown as Profil]));
+    setProfilsMap(map);
+
+    setEntrees(
+      data.map((e) => ({
+        ...e,
+        profil: map.get(e.changed_by) ?? null,
+      }))
+    );
+    setLoading(false);
   }, [ticketId]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { charger(); }, [charger]);
 
-  // Supabase Realtime — fonctionne avec REPLICA IDENTITY FULL (migration appliquée).
-  // Recharge instantanément dès qu'une ligne est insérée dans ticket_historique.
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -184,21 +198,12 @@ export function TicketHistorique({ ticketId }: { ticketId: string }) {
           const champLabel = CHAMP_LABELS[e.champ] ?? e.champ;
           const ancienne = formaterValeur(e.champ, e.ancienne_valeur, profilsMap);
           const nouvelle = formaterValeur(e.champ, e.nouvelle_valeur, profilsMap);
-          const heure = new Date(e.created_at).toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const jour = new Date(e.created_at).toLocaleDateString("fr-FR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "2-digit",
-          });
 
           return (
             <li key={e.id} className="flex items-start gap-2 text-xs text-muted-foreground">
-              {/* Date + heure en colonne fixe */}
-              <span className="shrink-0 w-24 opacity-60 tabular-nums pt-0.5">
-                {heure} · {jour}
+              {/* Date + heure en colonne fixe — assez large pour tenir sur une ligne */}
+              <span className="shrink-0 w-36 opacity-60 tabular-nums pt-0.5">
+                {formaterDateHeure(e.created_at)}
               </span>
               <span className="flex-1 leading-relaxed flex flex-wrap items-center gap-x-1 gap-y-0.5">
                 <ProfilAvatar profil={e.profil} />

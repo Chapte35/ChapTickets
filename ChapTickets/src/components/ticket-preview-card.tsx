@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TagChip } from "@/components/tag-badge";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import {
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
@@ -13,10 +14,11 @@ import {
 } from "@/lib/types";
 
 /**
- * Rendu de la fiche telle qu'elle apparaîtra une fois le ticket créé — même
- * composant, littéralement, que la fiche réelle (admin ET client).
- * `refAffichee` : référence formatée avec code court si dispo ("CHAP#32"),
- * sinon "#32". Absent en mode aperçu création (pas encore de numéro).
+ * Aperçu de ticket — utilisé côté création (admin + client) ET comme
+ * popover de survol dans les listes.
+ *
+ * La description est rendue via MarkdownRenderer pour être fidèle à ce
+ * que l'utilisateur verra dans la fiche réelle (WYSIWYG → markdown stocké).
  */
 export function TicketPreviewCard({
   titre,
@@ -74,7 +76,7 @@ export function TicketPreviewCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {description ? (
-          <p className="text-sm whitespace-pre-wrap">{description}</p>
+          <MarkdownRenderer content={description} />
         ) : (
           <p className="text-sm text-muted-foreground italic">Pas de description.</p>
         )}

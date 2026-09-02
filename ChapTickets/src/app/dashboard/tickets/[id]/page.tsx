@@ -231,6 +231,7 @@ export default async function ClientTicketDetailPage({
             typeTicket={typeTicket}
             assigneNom={assigneNom}
             releaseNom={releaseNom}
+            dateCreation={ticket.created_at}
           />
 
           <Card>

@@ -280,6 +280,22 @@ export default async function AdminTicketDetailPage({
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">Créé le</span>
+                <span className="text-xs tabular-nums">
+                  {new Date(ticket.created_at).toLocaleDateString("fr-FR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                  {" "}
+                  {new Date(ticket.created_at).toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).replace(":", "h")}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">Assigné à</span>
                 <AssigneAForm
                   ticketId={ticket.id}
