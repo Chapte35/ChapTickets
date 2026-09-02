@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, useEffect, type KeyboardEvent } from "react";
+import { useRef, useState, useTransition, useEffect, useId, type KeyboardEvent } from "react";
 import dynamic from "next/dynamic";
 
 const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then(m => m.RichTextEditor), { ssr: false });
@@ -16,13 +16,16 @@ type FormState = { error: string | null };
  * Modes :
  *   "title"    — textarea auto-height stylée comme un titre (font-semibold),
  *                sauvegarde sur Entrée (Shift+Entrée = saut de ligne désactivé).
- *                Remplace l'ancien mode "input" qui était une ligne unique —
- *                problématique sur mobile où éditer le début du titre était galère.
  *   "textarea" — textarea multi-ligne classique, sauvegarde sur Ctrl+Entrée.
+ *   "richtext" — éditeur Tiptap. Le RichTextEditor reçoit une `key` unique
+ *                générée à chaque ouverture pour forcer un remount propre
+ *                (contenu initial chargé depuis `brouillon`, curseur correct).
+ *                Le composant est non-contrôlé après le montage : on ne lui
+ *                passe jamais le brouillon mis à jour en prop, seulement via
+ *                le callback onChange.
  *
  * L'action doit accepter (_prevState, formData) avec un champ "valeur"
- * et un champ "ticket_id". On passe ticketId ici pour l'injecter dans le
- * FormData sans exposer un hidden input visible dans le DOM.
+ * et un champ "ticket_id".
  *
  * Échap → annule sans sauvegarder.
  */
@@ -56,6 +59,12 @@ export function InlineEditField({
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Clé unique incrémentée à chaque ouverture de l'édition richtext.
+  // Cela force un remount du RichTextEditor avec le bon contenu initial
+  // sans avoir besoin de synchroniser valeurInitiale en prop après le montage.
+  const baseId = useId();
+  const [editorKey, setEditorKey] = useState(0);
+
   // Auto-resize du textarea en fonction du contenu
   function autoResize() {
     const el = textareaRef.current;
@@ -65,7 +74,7 @@ export function InlineEditField({
   }
 
   useEffect(() => {
-    if (editing) {
+    if (editing && mode !== "richtext") {
       setTimeout(() => {
         textareaRef.current?.focus();
         // Place le curseur à la fin
@@ -74,11 +83,13 @@ export function InlineEditField({
         autoResize();
       }, 0);
     }
-  }, [editing]);
+  }, [editing, mode]);
 
   function commencerEdition() {
     setBrouillon(valeur);
     setErreur(null);
+    // Incrémenter la clé pour forcer un remount propre du RichTextEditor
+    setEditorKey((k) => k + 1);
     setEditing(true);
   }
 
@@ -130,6 +141,7 @@ export function InlineEditField({
       <div className={cn("flex flex-col gap-1.5", className)}>
         {mode === "richtext" ? (
           <RichTextEditor
+            key={`${baseId}-${editorKey}`}
             ticketId={ticketId}
             valeurInitiale={brouillon}
             onChange={setBrouillon}

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/guards";
 import { TICKET_STATUTS, TICKET_PRIORITES } from "@/lib/types";
 import { logHistorique, creerNotification } from "@/lib/historique";
+import { migrateBase64ImagesToStorage } from "@/lib/actions/migrate-images";
 
 export type FormState = { error: string | null };
 
@@ -76,6 +77,23 @@ export async function createTicketAdmin(
   }
 
   revalidatePath("/admin/tickets");
+
+  // Migrer les images base64 collées pendant la saisie vers Supabase Storage.
+  // Best-effort : on ne bloque pas la redirection en cas d'échec.
+  const descriptionStr = typeof description === "string" ? description.trim() : "";
+  if (descriptionStr) {
+    const descriptionMigree = await migrateBase64ImagesToStorage({
+      ticketId: ticket.id,
+      description: descriptionStr,
+      uploadedBy: userId,
+    });
+    if (descriptionMigree !== descriptionStr) {
+      await supabase
+        .from("tickets")
+        .update({ description: descriptionMigree })
+        .eq("id", ticket.id);
+    }
+  }
 
   const tagIds = formData.getAll("tag_ids").filter((v): v is string => typeof v === "string");
   if (tagIds.length > 0) {

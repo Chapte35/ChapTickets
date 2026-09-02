@@ -4,7 +4,9 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
+import { marked } from "marked";
+import TurndownService from "turndown";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -24,77 +26,51 @@ import {
 /**
  * Éditeur riche Tiptap avec :
  * - Bold, italic, listes, séparateur
- * - Upload image par coller (Ctrl+V) : upload vers Supabase Storage → insertion inline
- * - Stockage en markdown (pas en JSON) pour rester compatible avec le reste de l'app
+ * - Upload image par coller (Ctrl+V) ou bouton : upload vers Supabase Storage → insertion inline
+ * - Stockage en markdown via marked (md→html) + turndown (html→md)
  *
- * Le contenu est stocké en markdown via une conversion simple :
- * Tiptap travaille en HTML, on convertit vers/depuis markdown au montage/sauvegarde.
+ * Principe de fonctionnement du curseur :
+ * Le composant est « non-contrôlé » du point de vue de React après le montage.
+ * On ne re-synchronise JAMAIS le contenu depuis l'extérieur pendant l'édition
+ * (plus de useEffect sur valeurInitiale) — Tiptap gère son propre état interne
+ * et appelle onChange à chaque update. Le parent (InlineEditField) stocke le
+ * brouillon dans son propre état ; on passe valeurInitiale uniquement au montage
+ * via la prop `content` de useEditor.
+ *
+ * Pour forcer un remount propre (ex : ouverture d'édition), l'appelant doit
+ * fournir une `key` différente (voir InlineEditField).
  */
 
-// ── Conversion HTML ↔ Markdown minimaliste ────────────────────────────────────
-// On évite une dépendance lourde (turndown/marked) en faisant une conversion
-// adaptée au sous-ensemble HTML produit par Tiptap StarterKit + Image.
+// ── Conversion Markdown ↔ HTML via marked + turndown ─────────────────────────
+
+const turndown = new TurndownService({
+  headingStyle: "atx",
+  bulletListMarker: "-",
+  codeBlockStyle: "fenced",
+});
+
+// Règle custom pour les images : préserver le src et l'alt
+turndown.addRule("images", {
+  filter: "img",
+  replacement: (_content, node) => {
+    const el = node as HTMLImageElement;
+    const alt = el.getAttribute("alt") ?? "";
+    const src = el.getAttribute("src") ?? "";
+    return src ? `![${alt}](${src})` : "";
+  },
+});
 
 function htmlToMarkdown(html: string): string {
-  // On normalise d'abord les sauts de ligne pour les regex sans flag s
-  const h = html.replace(/\r\n|\r/g, "\n");
-  return h
-    .replace(/<strong>([\s\S]*?)<\/strong>/g, "**$1**")
-    .replace(/<em>([\s\S]*?)<\/em>/g, "*$1*")
-    .replace(/<h1>([\s\S]*?)<\/h1>/g, "# $1")
-    .replace(/<h2>([\s\S]*?)<\/h2>/g, "## $1")
-    .replace(/<h3>([\s\S]*?)<\/h3>/g, "### $1")
-    .replace(/<ul>([\s\S]*?)<\/ul>/g, (_, inner: string) =>
-      inner
-        .replace(/<li><p>([\s\S]*?)<\/p><\/li>/g, "- $1\n")
-        .replace(/<li>([\s\S]*?)<\/li>/g, "- $1\n")
-    )
-    .replace(/<ol>([\s\S]*?)<\/ol>/g, (_, inner: string) => {
-      let i = 1;
-      return inner
-        .replace(/<li><p>([\s\S]*?)<\/p><\/li>/g, (_m: string, t: string) => `${i++}. ${t}\n`)
-        .replace(/<li>([\s\S]*?)<\/li>/g, (_m: string, t: string) => `${i++}. ${t}\n`);
-    })
-    .replace(/<hr>/g, "\n---\n")
-    .replace(/<img[^>]+src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/g, "![$2]($1)")
-    .replace(/<img[^>]+src="([^"]*)"[^>]*\/?>/g, "![]($1)")
-    .replace(/<p>([\s\S]*?)<\/p>/g, "$1\n\n")
-    .replace(/<br\s*\/?>/g, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  if (!html || html === "<p></p>") return "";
+  return turndown.turndown(html).trim();
 }
 
 function markdownToHtml(md: string): string {
   if (!md) return "";
-  return md
-    .replace(/^### (.*)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.*)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.*)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*([\s\S]*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([\s\S]*?)\*/g, "<em>$1</em>")
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-    .replace(/^---$/gm, "<hr>")
-    .split("\n\n")
-    .map((block) => {
-      if (block.startsWith("<h") || block.startsWith("<hr")) return block;
-      if (block.match(/^- /m)) {
-        const items = block.split("\n").filter((l) => l.startsWith("- "));
-        return `<ul>${items.map((l) => `<li><p>${l.slice(2)}</p></li>`).join("")}</ul>`;
-      }
-      if (block.match(/^\d+\. /m)) {
-        const items = block.split("\n").filter((l) => l.match(/^\d+\. /));
-        return `<ol>${items.map((l) => `<li><p>${l.replace(/^\d+\. /, "")}</p></li>`).join("")}</ol>`;
-      }
-      const lines = block.split("\n").join("<br>");
-      return `<p>${lines}</p>`;
-    })
-    .join("\n");
+  // marked.parse retourne string | Promise<string> selon la config.
+  // En mode synchrone (par défaut sans async:true) c'est toujours string.
+  const result = marked.parse(md, { async: false });
+  return result as string;
 }
 
 // ── Upload image ──────────────────────────────────────────────────────────────
@@ -103,10 +79,9 @@ async function uploadImageToStorage(
   file: File,
   ticketId: string
 ): Promise<string | null> {
-  // Pas d'upload possible à la création (pas de ticketId réel)
+  // À la création, on stocke en base64 temporaire dans l'éditeur.
+  // L'action de création prend en charge le déplacement vers le vrai ticketId.
   if (ticketId === "__creation__") {
-    // Fallback : base64 temporaire — sera perdu si l'utilisateur ne sauvegarde pas
-    // mais évite un crash. L'image sera uploadée lors d'une édition ultérieure.
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
@@ -114,6 +89,7 @@ async function uploadImageToStorage(
       reader.readAsDataURL(file);
     });
   }
+
   const supabase = createClient();
   const path = `${ticketId}/${crypto.randomUUID()}-${file.name}`;
 
@@ -126,7 +102,6 @@ async function uploadImageToStorage(
     return null;
   }
 
-  // Enregistrer dans ticket_attachments
   await supabase.from("ticket_attachments").insert({
     ticket_id: ticketId,
     storage_path: path,
@@ -136,7 +111,6 @@ async function uploadImageToStorage(
     uploaded_by: (await supabase.auth.getUser()).data.user?.id,
   });
 
-  // URL signée longue durée (24h) pour l'affichage dans l'éditeur
   const { data: signed } = await supabase.storage
     .from("ticket-attachments")
     .createSignedUrl(path, 86400);
@@ -196,9 +170,11 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image.configure({ inline: false, allowBase64: false }),
+      Image.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
     ],
+    // Contenu chargé une seule fois au montage — jamais re-synchronisé depuis
+    // l'extérieur pendant la session d'édition (évite le bug de curseur).
     content: markdownToHtml(valeurInitiale),
     onUpdate: ({ editor }) => {
       onChange(htmlToMarkdown(editor.getHTML()));
@@ -221,7 +197,6 @@ export function RichTextEditor({
             const file = item.getAsFile();
             if (!file) continue;
 
-            // Upload async et insertion dans l'éditeur
             uploadImageToStorage(file, ticketId).then((url) => {
               if (!url) return;
               editor?.chain().focus().setImage({ src: url, alt: file.name }).run();
@@ -234,16 +209,6 @@ export function RichTextEditor({
     },
     immediatelyRender: false,
   });
-
-  // Sync si valeurInitiale change de l'extérieur (ex: reset après save)
-  useEffect(() => {
-    if (!editor) return;
-    const currentHtml = editor.getHTML();
-    const newHtml = markdownToHtml(valeurInitiale);
-    if (currentHtml !== newHtml) {
-      editor.commands.setContent(newHtml);
-    }
-  }, [valeurInitiale, editor]);
 
   const insertImageFromFile = useCallback(async () => {
     const input = document.createElement("input");
