@@ -23,6 +23,11 @@ export type DemandeReouverture = {
   profiles: { email: string | null; full_name: string | null } | null;
 };
 
+/**
+ * Deux formulaires distincts pour éviter tout risque de soumission
+ * accidentelle : un pour accepter, un pour refuser.
+ * Aucun bouton submit dans le même form que les boutons d'UI.
+ */
 function DecisionButtons({
   ticketId,
   demandeId,
@@ -30,52 +35,75 @@ function DecisionButtons({
   ticketId: string;
   demandeId: string;
 }) {
-  const [state, formAction, isPending] = useActionState(
+  const [acceptState, acceptAction, acceptPending] = useActionState(
+    traiterDemandeReouverture,
+    initialState
+  );
+  const [refusState, refusAction, refusPending] = useActionState(
     traiterDemandeReouverture,
     initialState
   );
   const [showRefus, setShowRefus] = useState(false);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
-      <input type="hidden" name="ticket_id" value={ticketId} />
-      <input type="hidden" name="demande_id" value={demandeId} />
+    <div className="flex flex-col gap-2">
+      {/* Formulaire acceptation */}
+      <form action={acceptAction}>
+        <input type="hidden" name="ticket_id" value={ticketId} />
+        <input type="hidden" name="demande_id" value={demandeId} />
+        <input type="hidden" name="decision" value="acceptee" />
+        {!showRefus && (
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" disabled={acceptPending}>
+              Accepter
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setShowRefus(true)}
+            >
+              Refuser
+            </Button>
+          </div>
+        )}
+        {acceptState.error && (
+          <p role="alert" className="text-sm text-destructive mt-1">{acceptState.error}</p>
+        )}
+      </form>
+
+      {/* Formulaire refus — affiché uniquement quand showRefus=true */}
       {showRefus && (
-        <Textarea
-          name="commentaire_refus"
-          placeholder="Motif du refus (optionnel, visible par le client)"
-          rows={2}
-          className="text-sm"
-        />
+        <form action={refusAction} className="flex flex-col gap-2">
+          <input type="hidden" name="ticket_id" value={ticketId} />
+          <input type="hidden" name="demande_id" value={demandeId} />
+          <input type="hidden" name="decision" value="refusee" />
+          <Textarea
+            name="commentaire_refus"
+            placeholder="Motif du refus (optionnel, visible par le client)"
+            rows={2}
+            className="text-sm"
+            autoFocus
+          />
+          {refusState.error && (
+            <p role="alert" className="text-sm text-destructive">{refusState.error}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" variant="destructive" disabled={refusPending}>
+              Confirmer le refus
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowRefus(false)}
+            >
+              Annuler
+            </Button>
+          </div>
+        </form>
       )}
-      <div className="flex items-center gap-2">
-        <Button type="submit" name="decision" value="acceptee" size="sm" disabled={isPending}>
-          Accepter
-        </Button>
-        {!showRefus ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setShowRefus(true)}
-          >
-            Refuser
-          </Button>
-        ) : (
-          <Button type="submit" name="decision" value="refusee" size="sm" variant="outline" disabled={isPending}>
-            Confirmer le refus
-          </Button>
-        )}
-        {showRefus && (
-          <Button type="button" size="sm" variant="ghost" onClick={() => setShowRefus(false)}>
-            Annuler
-          </Button>
-        )}
-        {state.error && (
-          <p role="alert" className="text-sm text-destructive">{state.error}</p>
-        )}
-      </div>
-    </form>
+    </div>
   );
 }
 

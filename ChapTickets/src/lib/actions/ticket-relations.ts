@@ -93,6 +93,11 @@ export async function supprimerRelation(
 /**
  * Recherche de tickets par ref (ex: CHAP#12) ou titre — pour le picker.
  * Exclut le ticket courant et ceux déjà liés.
+ *
+ * IMPORTANT : on évite le filtre PostgREST sur les colonnes de join embed
+ * (projets.code_court) car PostgREST filtre silencieusement les lignes
+ * sans match au lieu de ne filtrer que le join — on fait deux queries
+ * séparées à la place.
  */
 export async function rechercherTicketsPourRelation(
   ticketId: string,
@@ -117,9 +122,8 @@ export async function rechercherTicketsPourRelation(
     .select("ticket_cible_id")
     .eq("ticket_id", ticketId);
 
-  const exclus = [ticketId, ...(dejaLies ?? []).map((r) => r.ticket_cible_id)];
-
-  const exclusFilter = `(${exclus.join(",")})`;
+  const exclus = new Set<string>([ticketId, ...(dejaLies ?? []).map((r) => r.ticket_cible_id)]);
+  const exclusFilter = `(${[...exclus].join(",")})`;
 
   function mapResult(t: unknown): { id: string; rang_projet: number; titre: string; code_court: string | null } {
     const row = t as { id: string; rang_projet: number; titre: string; projets: unknown };
@@ -131,64 +135,80 @@ export async function rechercherTicketsPourRelation(
     };
   }
 
-  const dejaInclus = new Set<string>(exclus);
   const resultats: Array<{ id: string; rang_projet: number; titre: string; code_court: string | null }> = [];
 
-  // 1. Recherche par titre (ilike) — le # est échappé pour PostgREST
-  const titreSafe = query.replace(/#/g, "\\#");
-  const { data: parTitre } = await supabase
-    .from("tickets_avec_rang")
-    .select("id, rang_projet, titre, projets(code_court)")
-    .not("id", "in", exclusFilter)
-    .ilike("titre", `%${titreSafe}%`)
-    .limit(8);
+  // 1. Recherche par ref formatée (ex: "CHAP#12", "CHAP", "CHAP12")
+  // On fait la résolution du code_court EN AMONT pour éviter le bug PostgREST.
+  const qUpper = query.trim().toUpperCase();
+  const refMatch = qUpper.match(/^([A-Z]+)#?(\d*)$/);
 
-  for (const t of parTitre ?? []) {
-    const r = mapResult(t);
-    if (!dejaInclus.has(r.id)) {
-      dejaInclus.add(r.id);
-      resultats.push(r);
+  if (refMatch) {
+    const [, codeCourt, rang] = refMatch;
+
+    // Récupérer d'abord les projet_ids dont le code_court match
+    const { data: projetsMatch } = await supabase
+      .from("projets")
+      .select("id")
+      .ilike("code_court", `${codeCourt}%`);
+
+    const projetIds = (projetsMatch ?? []).map((p) => p.id);
+
+    if (projetIds.length > 0) {
+      let refQuery = supabase
+        .from("tickets_avec_rang")
+        .select("id, rang_projet, titre, projets(code_court)")
+        .not("id", "in", exclusFilter)
+        .in("projet_id", projetIds);
+
+      if (rang) refQuery = refQuery.eq("rang_projet", parseInt(rang));
+
+      const { data: parRef } = await refQuery.limit(8);
+      for (const t of parRef ?? []) {
+        const r = mapResult(t);
+        if (!exclus.has(r.id)) {
+          exclus.add(r.id);
+          resultats.push(r);
+        }
+      }
     }
   }
 
-  // 2. Recherche par numéro pur (ex: "12" → rang_projet = 12)
-  const numMatch = query.trim().match(/^\d+$/);
-  if (numMatch && resultats.length < 8) {
-    const rang = parseInt(query.trim());
-    const { data: parNum } = await supabase
+  // 2. Recherche par titre (ilike) si pas encore assez de résultats
+  if (resultats.length < 8) {
+    const currentExclus = `(${[...exclus].join(",")})`;
+    const titreSafe = query.replace(/#/g, "\\#");
+    const { data: parTitre } = await supabase
       .from("tickets_avec_rang")
       .select("id, rang_projet, titre, projets(code_court)")
-      .not("id", "in", `(${[...dejaInclus].join(",")})`)
-      .eq("rang_projet", rang)
+      .not("id", "in", currentExclus)
+      .ilike("titre", `%${titreSafe}%`)
       .limit(8 - resultats.length);
 
-    for (const t of parNum ?? []) {
+    for (const t of parTitre ?? []) {
       const r = mapResult(t);
-      if (!dejaInclus.has(r.id)) {
-        dejaInclus.add(r.id);
+      if (!exclus.has(r.id)) {
+        exclus.add(r.id);
         resultats.push(r);
       }
     }
   }
 
-  // 3. Recherche par ref formatée (ex: "CHAP#12", "CHAP", "CHAP12")
-  const qUpper = query.trim().toUpperCase();
-  const refMatch = qUpper.match(/^([A-Z]+)#?(\d*)$/);
-  if (refMatch && !numMatch && resultats.length < 8) {
-    const [, codeCourt, rang] = refMatch;
-    let refQuery = supabase
+  // 3. Recherche par numéro pur (ex: "12" → rang_projet = 12)
+  const numMatch = query.trim().match(/^\d+$/);
+  if (numMatch && resultats.length < 8) {
+    const rang = parseInt(query.trim());
+    const currentExclus = `(${[...exclus].join(",")})`;
+    const { data: parNum } = await supabase
       .from("tickets_avec_rang")
       .select("id, rang_projet, titre, projets(code_court)")
-      .not("id", "in", `(${[...dejaInclus].join(",")})`)
-      .ilike("projets.code_court", `${codeCourt}%`);
+      .not("id", "in", currentExclus)
+      .eq("rang_projet", rang)
+      .limit(8 - resultats.length);
 
-    if (rang) refQuery = refQuery.eq("rang_projet", parseInt(rang));
-
-    const { data: parRef } = await refQuery.limit(8 - resultats.length);
-    for (const t of parRef ?? []) {
+    for (const t of parNum ?? []) {
       const r = mapResult(t);
-      if (!dejaInclus.has(r.id)) {
-        dejaInclus.add(r.id);
+      if (!exclus.has(r.id)) {
+        exclus.add(r.id);
         resultats.push(r);
       }
     }

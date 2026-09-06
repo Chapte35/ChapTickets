@@ -66,7 +66,7 @@ export default async function AdminTicketDetailPage({
     supabase
       .from("demandes_reouverture")
       .select(
-        "id, message, statut, created_at, nouveau_ticket_id, profiles:profiles!demandes_reouverture_demande_par_fkey(email, full_name)"
+        "id, message, statut, created_at, nouveau_ticket_id, commentaire_refus, profiles:profiles!demandes_reouverture_demande_par_fkey(email, full_name)"
       )
       .eq("ticket_id", id)
       .order("created_at", { ascending: false }),

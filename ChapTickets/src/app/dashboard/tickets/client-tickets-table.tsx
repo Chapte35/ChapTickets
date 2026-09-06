@@ -58,12 +58,13 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-32">Réf. client</TableHead>
-          <TableHead className="w-28">Réf. interne</TableHead>
+          {/* Ordre : type → réf interne → réf client → titre → ... */}
           <TableHead className="w-8">Type</TableHead>
+          <TableHead className="w-28">Réf. interne</TableHead>
+          <TableHead className="w-32">Réf. client</TableHead>
+          <TableHead>Titre</TableHead>
           <TableHead className="w-24">Priorité</TableHead>
           <TableHead className="w-36">Statut</TableHead>
-          <TableHead>Titre</TableHead>
           <TableHead className="w-10">Créé par</TableHead>
           <TableHead className="w-10">Assigné</TableHead>
           <TableHead className="w-24">Créé le</TableHead>
@@ -78,16 +79,19 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
             onClick={() => router.push(`/dashboard/tickets/${t.id}`)}
             {...rowHandlers(t.id)}
           >
-            <TableCell className="text-muted-foreground text-xs">
-              {t.ref_client ?? <span className="italic text-muted-foreground/50">—</span>}
-            </TableCell>
-            <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
-              {formatRefTicket(t.rang_projet, t.projets?.code_court)}
-            </TableCell>
             <TableCell>
               {t.type_ticket && (
                 <TicketTypeBadge type={t.type_ticket as TicketType} variant="icon" />
               )}
+            </TableCell>
+            <TableCell className="text-muted-foreground tabular-nums font-mono text-xs">
+              {formatRefTicket(t.rang_projet, t.projets?.code_court)}
+            </TableCell>
+            <TableCell className="text-muted-foreground text-xs">
+              {t.ref_client ?? <span className="italic text-muted-foreground/50">—</span>}
+            </TableCell>
+            <TableCell className="font-medium max-w-[220px]">
+              <span className="block truncate" title={t.titre}>{t.titre}</span>
             </TableCell>
             <TableCell>
               <PrioriteBadge priorite={t.priorite} />
@@ -97,7 +101,6 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
                 {TICKET_STATUT_LABELS[t.statut]}
               </Badge>
             </TableCell>
-            <TableCell className="font-medium">{t.titre}</TableCell>
             <TableCell className="w-10">
               {t.createur_nom ? (
                 <Avatar

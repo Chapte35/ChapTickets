@@ -32,6 +32,7 @@ export function TicketPreviewCard({
   typeTicket,
   numero,
   refAffichee,
+  createdAt,
 }: {
   titre: string;
   description: string;
@@ -45,6 +46,8 @@ export function TicketPreviewCard({
   numero?: number;
   /** Référence pré-formatée (ex : "CHAP#32"). Si absent, on fallback sur "#numero". */
   refAffichee?: string;
+  /** Date de création ISO — affichée dans l'aperçu si fournie. */
+  createdAt?: string | null;
 }) {
   const refLabel = refAffichee ?? (numero != null ? `#${numero}` : null);
 
@@ -93,6 +96,17 @@ export function TicketPreviewCard({
           <p className="text-xs text-muted-foreground">
             Échéance :{" "}
             {new Date(dateEcheance).toLocaleDateString("fr-FR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+          </p>
+        )}
+
+        {createdAt && (
+          <p className="text-xs text-muted-foreground">
+            Créé le :{" "}
+            {new Date(createdAt).toLocaleDateString("fr-FR", {
               day: "2-digit",
               month: "2-digit",
               year: "numeric",

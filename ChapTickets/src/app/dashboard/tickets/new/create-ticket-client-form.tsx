@@ -195,6 +195,7 @@ export function CreateTicketClientForm({
           clientNom={clientNom}
           dateEcheance={null}
           tags={tagsSelectionnes}
+          createdAt={new Date().toISOString()}
         />
       </div>
     </div>

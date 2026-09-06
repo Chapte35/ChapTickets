@@ -40,6 +40,7 @@ type PreviewData = {
   nbRelations: number;
   aDemandeReouverture: boolean;
   releaseNom: string | null;
+  createdAt: string | null;
 };
 
 /**
@@ -170,7 +171,7 @@ export function TicketPreviewPopover({
         .order("created_at", { ascending: false }),
       supabase
         .from("tickets")
-        .select("assigne_a, created_by, type_ticket, ref_client, date_prevue, release_id, assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email, pseudo)")
+        .select("assigne_a, created_by, type_ticket, ref_client, date_prevue, release_id, created_at, assigne_profile:profiles!tickets_assigne_a_fkey(full_name, email, pseudo)")
         .eq("id", ticketId)
         .single(),
       supabase
@@ -223,6 +224,7 @@ export function TicketPreviewPopover({
       nbRelations: nbRelations ?? 0,
       aDemandeReouverture: (nbDemandes ?? 0) > 0,
       releaseNom,
+      createdAt: (ticketDetail as unknown as { created_at: string | null })?.created_at ?? null,
     });
     setLoading(false);
   }
@@ -264,6 +266,7 @@ export function TicketPreviewPopover({
   const createurNom = data?.createur?.full_name || data?.createur?.email || null;
   const typeTicket = data?.typeTicket ?? null;
   const refClient = data?.refClient ?? null;
+  const createdAt = data?.createdAt ?? null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -303,18 +306,25 @@ export function TicketPreviewPopover({
         {...(popoverHandlers ?? {})}
       >
         <div className="flex flex-col gap-2 p-3 border-b">
-          <p className="text-sm font-medium leading-snug">{titre}</p>
+          <div className="flex items-center gap-1.5">
+            {typeTicket && (
+              <TicketTypeBadge type={typeTicket as TicketType} variant="icon" />
+            )}
+            <p className="text-sm font-medium leading-snug">{titre}</p>
+          </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <PrioriteBadge priorite={priorite} />
             <Badge variant={ticketStatutBadgeVariant(statut)} className="text-xs">
               {TICKET_STATUT_LABELS[statut]}
             </Badge>
-            {typeTicket && (
-              <TicketTypeBadge type={typeTicket as TicketType} variant="icon" />
-            )}
           </div>
           {refClient && (
             <p className="text-xs text-muted-foreground font-mono">Réf. client : {refClient}</p>
+          )}
+          {(createurNom || createdAt) && (
+            <p className="text-xs text-muted-foreground">
+              Créé{createurNom && <> par <span className="text-foreground">{createurNom}</span></>}{createdAt && <> le {new Date(createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })}</>}
+            </p>
           )}
         </div>
 
@@ -334,14 +344,7 @@ export function TicketPreviewPopover({
               )}
             </div>
 
-            {createurNom && (
-              <div className="px-3 py-2.5 flex items-center gap-1.5">
-                <UserCheck className="size-3 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground">
-                  Créé par : <span className="text-foreground">{createurNom}</span>
-                </span>
-              </div>
-            )}
+
 
             {assigneNom && (
               <div className="px-3 py-2.5 flex items-center gap-1.5">

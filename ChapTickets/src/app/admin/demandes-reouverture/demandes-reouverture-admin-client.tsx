@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState, useRef, useEffect } from "react";
+import { useState, useActionState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,16 @@ function TunnelDecisionForm({
   onTraitee: () => void;
 }) {
   const [showRefus, setShowRefus] = useState(false);
-  const [state, formAction, isPending] = useActionState(
+
+  const [acceptState, acceptAction, acceptPending] = useActionState(
+    async (prev: { error: string | null }, fd: FormData) => {
+      const result = await traiterDemandeReouverture(prev, fd);
+      if (!result.error) onTraitee();
+      return result;
+    },
+    initialState
+  );
+  const [refusState, refusAction, refusPending] = useActionState(
     async (prev: { error: string | null }, fd: FormData) => {
       const result = await traiterDemandeReouverture(prev, fd);
       if (!result.error) onTraitee();
@@ -39,37 +48,16 @@ function TunnelDecisionForm({
     initialState
   );
 
-  // Reset du mode refus quand on change de demande (navigation tunnel)
-  const demandeIdRef = useRef(demande.id);
-  useEffect(() => {
-    if (demandeIdRef.current !== demande.id) {
-      demandeIdRef.current = demande.id;
-      setShowRefus(false);
-    }
-  }, [demande.id]);
-
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <input type="hidden" name="ticket_id" value={demande.ticket_id} />
-      <input type="hidden" name="demande_id" value={demande.id} />
-
-      {showRefus && (
-        <Textarea
-          name="commentaire_refus"
-          placeholder="Motif du refus (optionnel, visible par le client)"
-          rows={3}
-          autoFocus
-        />
-      )}
-
-      {state.error && (
-        <p role="alert" className="text-sm text-destructive">{state.error}</p>
-      )}
-
-      <div className="flex gap-2 flex-wrap">
-        {!showRefus ? (
-          <>
-            <Button type="submit" name="decision" value="acceptee" disabled={isPending}>
+    <div className="flex flex-col gap-3">
+      {/* Formulaire acceptation */}
+      <form action={acceptAction}>
+        <input type="hidden" name="ticket_id" value={demande.ticket_id} />
+        <input type="hidden" name="demande_id" value={demande.id} />
+        <input type="hidden" name="decision" value="acceptee" />
+        {!showRefus && (
+          <div className="flex gap-2 flex-wrap items-center">
+            <Button type="submit" disabled={acceptPending}>
               ✓ Accepter
             </Button>
             <Button
@@ -79,19 +67,39 @@ function TunnelDecisionForm({
             >
               ✕ Refuser
             </Button>
-          </>
-        ) : (
-          <>
-            <Button type="submit" name="decision" value="refusee" variant="destructive" disabled={isPending}>
+          </div>
+        )}
+        {acceptState.error && (
+          <p role="alert" className="text-sm text-destructive mt-1">{acceptState.error}</p>
+        )}
+      </form>
+
+      {/* Formulaire refus */}
+      {showRefus && (
+        <form action={refusAction} className="flex flex-col gap-3">
+          <input type="hidden" name="ticket_id" value={demande.ticket_id} />
+          <input type="hidden" name="demande_id" value={demande.id} />
+          <input type="hidden" name="decision" value="refusee" />
+          <Textarea
+            name="commentaire_refus"
+            placeholder="Motif du refus (optionnel, visible par le client)"
+            rows={3}
+            autoFocus
+          />
+          {refusState.error && (
+            <p role="alert" className="text-sm text-destructive">{refusState.error}</p>
+          )}
+          <div className="flex gap-2">
+            <Button type="submit" variant="destructive" disabled={refusPending}>
               Confirmer le refus
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowRefus(false)}>
               Annuler
             </Button>
-          </>
-        )}
-      </div>
-    </form>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -179,7 +187,7 @@ function TunnelModal({
           {dejaTraitee ? (
             <p className="text-sm text-muted-foreground italic">✓ Demande traitée dans cette session.</p>
           ) : (
-            <TunnelDecisionForm demande={demande} onTraitee={onTraitee} />
+            <TunnelDecisionForm key={demande.id} demande={demande} onTraitee={onTraitee} />
           )}
 
           {/* Navigation */}
