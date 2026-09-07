@@ -81,7 +81,7 @@ export default async function ClientTicketsPage({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Mes tickets <span className="text-sm font-normal text-muted-foreground">— en attente de votre retour</span></h1>
+        <h1 className="text-lg font-semibold">Tous les tickets</h1>
         <Button asChild size="sm">
           <Link href="/dashboard/tickets/new">Nouveau ticket</Link>
         </Button>

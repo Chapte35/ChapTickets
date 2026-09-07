@@ -10,6 +10,7 @@ import { PrioriteBadge } from "@/components/priorite-badge";
 import { CloturerSprintDialog } from "@/components/sprints/cloturer-sprint-dialog";
 import { TICKET_STATUT_LABELS, ticketStatutBadgeVariant, type TicketStatut, type TicketPriorite } from "@/lib/types";
 import { SPRINT_STATUT_LABELS, type SprintAvecTickets } from "@/lib/sprint-types";
+import { StatutBadge } from "@/components/statut-badge";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", {
@@ -92,12 +93,9 @@ export function SprintCard({
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <PrioriteBadge priorite={t.priorite as TicketPriorite} />
-                    <Badge
-                      variant={ticketStatutBadgeVariant(t.statut as TicketStatut)}
+                    <StatutBadge statut={t.statut as TicketStatut}
                       className="text-[10px]"
-                    >
-                      {TICKET_STATUT_LABELS[t.statut as TicketStatut]}
-                    </Badge>
+                     />
                   </div>
                 </Link>
               </li>

@@ -14,6 +14,7 @@ import {
   type TicketPriorite,
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
+import { StatutBadge } from "@/components/statut-badge";
 import {
   ajouterRelation,
   supprimerRelation,
@@ -65,9 +66,7 @@ function ChipRelation({
         <span className="font-mono text-xs text-muted-foreground">{ref}</span>
         <span className="font-medium truncate">{relation.titre}</span>
         <PrioriteBadge priorite={relation.priorite} />
-        <Badge variant={ticketStatutBadgeVariant(relation.statut)} className="text-xs shrink-0">
-          {TICKET_STATUT_LABELS[relation.statut]}
-        </Badge>
+        <StatutBadge statut={relation.statut} className="text-xs shrink-0" />
       </a>
       <form action={formAction}>
         <input type="hidden" name="ticket_id" value={ticketId} />

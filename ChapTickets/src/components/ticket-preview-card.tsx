@@ -4,6 +4,7 @@ import { TagChip } from "@/components/tag-badge";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { StatutBadge } from "@/components/statut-badge";
 import {
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
@@ -70,9 +71,7 @@ export function TicketPreviewCard({
             <PrioriteBadge priorite={priorite} />
             {typeTicket && <TicketTypeBadge type={typeTicket} />}
             {statut && (
-              <Badge variant={ticketStatutBadgeVariant(statut)}>
-                {TICKET_STATUT_LABELS[statut]}
-              </Badge>
+              <StatutBadge statut={statut} />
             )}
           </div>
         </div>

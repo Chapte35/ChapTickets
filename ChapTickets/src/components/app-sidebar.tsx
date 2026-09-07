@@ -22,6 +22,7 @@ import {
   PackageOpen,
   MailOpen,
   RotateCcw,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -227,6 +228,37 @@ export function AppSidebar({
 
       <GlobalCommandMenu basePath={basePath} />
 
+      <div className="border-t px-2 py-2">
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="w-9 h-9 mx-auto flex border-violet-400 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:border-violet-600 dark:text-violet-400 dark:hover:bg-violet-950"
+                aria-label="Nouveau ticket"
+              >
+                <Link href={`${basePath === "/admin" ? "/admin/tickets/new" : "/dashboard/tickets/new"}`}>
+                  <Plus className="size-5" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Nouveau ticket</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            asChild
+            variant="outline"
+            className="w-full justify-start gap-3 px-3 h-10 border-violet-400 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:border-violet-600 dark:text-violet-400 dark:hover:bg-violet-950"
+          >
+            <Link href={`${basePath === "/admin" ? "/admin/tickets/new" : "/dashboard/tickets/new"}`}>
+              <Plus className="size-4" />
+              Nouveau ticket
+            </Link>
+          </Button>
+        )}
+      </div>
       <div className="border-t px-2 py-2 flex flex-col gap-1">
         <ThemeToggle collapsed={collapsed} />
         <form action={logoutAction}>

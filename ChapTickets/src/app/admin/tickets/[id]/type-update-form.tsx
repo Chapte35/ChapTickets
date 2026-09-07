@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -29,16 +30,27 @@ export function TypeUpdateForm({
   currentType: TicketType | null;
 }) {
   const [typeLocal, setTypeLocal] = useState<string>(currentType ?? AUCUN_TYPE);
-  const [formKey, setFormKey] = useState(0);
+  // Garde la valeur soumise pour pouvoir la restaurer après le refresh
+  const typeSubmis = useRef<string>(currentType ?? AUCUN_TYPE);
   const [state, formAction, isPending] = useActionState(updateTicketType, initialState);
+  const router = useRouter();
 
   useToastOnSuccess(isPending, state.error, "Type mis à jour.", () => {
     window.dispatchEvent(new CustomEvent("ticket-historique-refresh"));
-    setFormKey((k) => k + 1);
+    // Mettre à jour l'affichage local avec la valeur effectivement sauvegardée
+    setTypeLocal(typeSubmis.current);
+    router.refresh();
   });
 
   return (
-    <form key={formKey} action={formAction} className="flex items-end gap-2">
+    <form
+      action={formAction}
+      className="flex items-end gap-2"
+      onSubmit={() => {
+        // Mémoriser la valeur en cours de soumission
+        typeSubmis.current = typeLocal;
+      }}
+    >
       <input type="hidden" name="ticket_id" value={ticketId} />
       <Select
         name="type_ticket"

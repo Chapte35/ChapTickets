@@ -14,6 +14,7 @@ import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
 import type { ProjetAvecReleases, ReleaseAvecTickets, TicketDeLaRelease } from "./page";
+import { StatutBadge } from "@/components/statut-badge";
 
 // ── Ligne ticket dans la release ─────────────────────────────────────────────
 
@@ -63,9 +64,7 @@ function LigneTicket({
       {/* Priorité + statut */}
       <div className="flex items-center gap-2 shrink-0">
         <PrioriteBadge priorite={ticket.priorite} />
-        <Badge variant={ticketStatutBadgeVariant(ticket.statut)} className="text-xs hidden sm:inline-flex">
-          {TICKET_STATUT_LABELS[ticket.statut]}
-        </Badge>
+        <StatutBadge statut={ticket.statut} className="text-xs hidden sm:inline-flex" />
       </div>
 
       {/* Preview popover */}

@@ -41,6 +41,7 @@ import {
 import { PrioriteBadge } from "@/components/priorite-badge";
 import type { TicketSummary } from "@/lib/queries/dashboard";
 import { initiales } from "@/lib/initiales";
+import { StatutBadge } from "@/components/statut-badge";
 
 function SortableHeader({
   label,
@@ -130,7 +131,7 @@ const columns: ColumnDef<TicketSummary>[] = [
     header: ({ column }) => <SortableHeader label="Statut" column={column} />,
     cell: ({ getValue }) => {
       const s = getValue<TicketSummary["statut"]>();
-      return <Badge variant={ticketStatutBadgeVariant(s)}>{TICKET_STATUT_LABELS[s]}</Badge>;
+      return <StatutBadge statut={s} />;
     },
   },
   {

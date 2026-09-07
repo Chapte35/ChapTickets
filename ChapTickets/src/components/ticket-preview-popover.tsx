@@ -21,6 +21,7 @@ import {
 } from "@/lib/types";
 import { TAG_COLOR_CLASSES, type Tag } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
+import { StatutBadge } from "@/components/statut-badge";
 
 type ChecklistItem = { id: string; contenu: string; complete: boolean };
 type Attachment = { id: string; nom_fichier: string; taille_octets: number | null };
@@ -314,9 +315,7 @@ export function TicketPreviewPopover({
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <PrioriteBadge priorite={priorite} />
-            <Badge variant={ticketStatutBadgeVariant(statut)} className="text-xs">
-              {TICKET_STATUT_LABELS[statut]}
-            </Badge>
+            <StatutBadge statut={statut} className="text-xs" />
           </div>
           {refClient && (
             <p className="text-xs text-muted-foreground font-mono">Réf. client : {refClient}</p>

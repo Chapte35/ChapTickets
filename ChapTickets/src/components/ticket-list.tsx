@@ -9,6 +9,7 @@ import {
 } from "@/lib/types";
 import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketPreviewPopover } from "@/components/ticket-preview-popover";
+import { StatutBadge } from "@/components/statut-badge";
 
 export type TicketRow = {
   id: string;
@@ -64,9 +65,7 @@ export function TicketList({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <PrioriteBadge priorite={t.priorite} />
-                <Badge variant={ticketStatutBadgeVariant(t.statut)}>
-                  {TICKET_STATUT_LABELS[t.statut]}
-                </Badge>
+                <StatutBadge statut={t.statut} />
               </div>
               </Link>
               <TicketPreviewPopover

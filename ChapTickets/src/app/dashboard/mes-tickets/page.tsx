@@ -83,7 +83,7 @@ export default async function MesTicketsPage({
         <div>
           <h1 className="text-lg font-semibold">Mes tickets</h1>
           <p className="text-sm text-muted-foreground">
-            Tickets qui vous ont été assignés et qui attendent votre action.
+            Tickets qui vous sont assignés et qui attendent votre action.
           </p>
         </div>
       </div>

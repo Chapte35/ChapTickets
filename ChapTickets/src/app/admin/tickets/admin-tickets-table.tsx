@@ -37,6 +37,7 @@ import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { deleteTicket, deleteTicketsBulk, updateTicketsStatutBulk, updateTicketsAssigneBulk, updateTicketsTypeBulk } from "./actions";
+import { StatutBadge } from "@/components/statut-badge";
 
 export type AdminTicketRow = {
   id: string;
@@ -628,9 +629,7 @@ export function AdminTicketsTable({ tickets, profils }: { tickets: AdminTicketRo
                 <PrioriteBadge priorite={t.priorite} />
               </TableCell>
               <TableCell>
-                <Badge variant={ticketStatutBadgeVariant(t.statut)}>
-                  {TICKET_STATUT_LABELS[t.statut]}
-                </Badge>
+                <StatutBadge statut={t.statut} />
               </TableCell>
               <TableCell className="font-medium">{t.titre}</TableCell>
               <TableCell className="text-muted-foreground">{t.projets?.nom ?? "—"}</TableCell>

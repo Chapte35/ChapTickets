@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
 import { useCallback } from "react";
 import { marked } from "marked";
 import TurndownService from "turndown";
@@ -16,6 +17,7 @@ import {
   ListOrdered,
   Minus,
   ImageIcon,
+  Table as TableIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -25,7 +27,7 @@ import {
 
 /**
  * Éditeur riche Tiptap avec :
- * - Bold, italic, listes, séparateur
+ * - Bold, italic, listes, séparateur, tableaux
  * - Upload image par coller (Ctrl+V) ou bouton : upload vers Supabase Storage → insertion inline
  * - Stockage en markdown via marked (md→html) + turndown (html→md)
  *
@@ -60,6 +62,34 @@ turndown.addRule("images", {
   },
 });
 
+// Règle custom pour les tableaux HTML → markdown GFM
+turndown.addRule("table", {
+  filter: "table",
+  replacement: (_content, node) => {
+    const table = node as HTMLTableElement;
+    const rows = Array.from(table.querySelectorAll("tr"));
+    if (rows.length === 0) return "";
+
+    const toRow = (tr: HTMLTableRowElement, sep = false) => {
+      const cells = Array.from(tr.querySelectorAll("th, td")).map(
+        (td) => td.textContent?.replace(/\|/g, "\\|").trim() ?? ""
+      );
+      const line = `| ${cells.join(" | ")} |`;
+      if (!sep) return line;
+      const divider = `| ${cells.map(() => "---").join(" | ")} |`;
+      return `${line}\n${divider}`;
+    };
+
+    return (
+      "\n\n" +
+      rows
+        .map((tr, i) => toRow(tr as HTMLTableRowElement, i === 0))
+        .join("\n") +
+      "\n\n"
+    );
+  },
+});
+
 function htmlToMarkdown(html: string): string {
   if (!html || html === "<p></p>") return "";
   return turndown.turndown(html).trim();
@@ -67,8 +97,6 @@ function htmlToMarkdown(html: string): string {
 
 function markdownToHtml(md: string): string {
   if (!md) return "";
-  // marked.parse retourne string | Promise<string> selon la config.
-  // En mode synchrone (par défaut sans async:true) c'est toujours string.
   const result = marked.parse(md, { async: false });
   return result as string;
 }
@@ -80,7 +108,6 @@ async function uploadImageToStorage(
   ticketId: string
 ): Promise<string | null> {
   // À la création, on stocke en base64 temporaire dans l'éditeur.
-  // L'action de création prend en charge le déplacement vers le vrai ticketId.
   if (ticketId === "__creation__") {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -172,9 +199,11 @@ export function RichTextEditor({
       StarterKit,
       Image.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
-    // Contenu chargé une seule fois au montage — jamais re-synchronisé depuis
-    // l'extérieur pendant la session d'édition (évite le bug de curseur).
     content: markdownToHtml(valeurInitiale),
     onUpdate: ({ editor }) => {
       onChange(htmlToMarkdown(editor.getHTML()));
@@ -184,7 +213,13 @@ export function RichTextEditor({
         class: cn(
           "prose prose-sm dark:prose-invert max-w-none min-h-[120px] p-3 focus:outline-none",
           "[&_img]:max-w-full [&_img]:rounded-md [&_img]:my-2",
-          "[&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5"
+          "[&_p]:my-1",
+          "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5",
+          "[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5",
+          "[&_li]:my-0.5",
+          "[&_table]:border-collapse [&_table]:w-full [&_table]:my-2",
+          "[&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_th]:text-left [&_th]:text-xs [&_th]:font-medium",
+          "[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:text-sm"
         ),
       },
       handlePaste: (view, event) => {
@@ -222,6 +257,10 @@ export function RichTextEditor({
     };
     input.click();
   }, [editor, ticketId]);
+
+  const insertTable = useCallback(() => {
+    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  }, [editor]);
 
   if (!editor) return null;
 
@@ -264,6 +303,9 @@ export function RichTextEditor({
           label="Séparateur"
         >
           <Minus className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={insertTable} label="Insérer un tableau">
+          <TableIcon className="size-3.5" />
         </ToolbarButton>
         <ToolbarButton onClick={insertImageFromFile} label="Insérer une image">
           <ImageIcon className="size-3.5" />

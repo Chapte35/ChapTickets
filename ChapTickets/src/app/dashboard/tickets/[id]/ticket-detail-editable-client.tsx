@@ -34,6 +34,7 @@ import {
   updateTicketTypeClient,
 } from "../actions";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { StatutBadge } from "@/components/statut-badge";
 
 type FormState = { error: string | null };
 const initialState: FormState = { error: null };
@@ -232,9 +233,7 @@ export function TicketDetailEditableClient({
         {/* Statut — lecture seule côté client */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">Statut</span>
-          <Badge variant={ticketStatutBadgeVariant(statut)} className="w-fit">
-            {TICKET_STATUT_LABELS[statut]}
-          </Badge>
+          <StatutBadge statut={statut} className="w-fit" />
         </div>
 
         {/* Type — éditable */}

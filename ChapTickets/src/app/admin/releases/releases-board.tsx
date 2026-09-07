@@ -39,6 +39,7 @@ import type { TicketSansRelease } from "./page";
 import type { ProjetOption, ClientOption } from "@/lib/queries/tickets";
 import { createClient } from "@/lib/supabase/client";
 import { X, GripVertical, Mail, Users, User, Plus, Pencil } from "lucide-react";
+import { StatutBadge } from "@/components/statut-badge";
 
 const DROPPABLE_ID = "release-form";
 
@@ -95,9 +96,7 @@ function CarteTicket({
         </span>
         <div className="flex items-center gap-1.5 flex-wrap">
           <PrioriteBadge priorite={ticket.priorite} />
-          <Badge variant={ticketStatutBadgeVariant(ticket.statut)} className="text-xs">
-            {TICKET_STATUT_LABELS[ticket.statut]}
-          </Badge>
+          <StatutBadge statut={ticket.statut} className="text-xs" />
           {ticket.projets && (
             <span className="text-xs text-muted-foreground">{ticket.projets.nom}</span>
           )}

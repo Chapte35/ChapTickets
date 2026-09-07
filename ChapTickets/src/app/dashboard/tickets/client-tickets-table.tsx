@@ -22,6 +22,7 @@ import { PrioriteBadge } from "@/components/priorite-badge";
 import { TicketTypeBadge } from "@/components/ticket-type-badge";
 import { TicketPreviewPopover, useRowHoverPreview } from "@/components/ticket-preview-popover";
 import { Avatar, type AvatarCouleur } from "@/components/avatar";
+import { StatutBadge } from "@/components/statut-badge";
 
 export type ClientTicketRow = {
   id: string;
@@ -97,9 +98,7 @@ export function ClientTicketsTable({ tickets }: { tickets: ClientTicketRow[] }) 
               <PrioriteBadge priorite={t.priorite} />
             </TableCell>
             <TableCell>
-              <Badge variant={ticketStatutBadgeVariant(t.statut)}>
-                {TICKET_STATUT_LABELS[t.statut]}
-              </Badge>
+              <StatutBadge statut={t.statut} />
             </TableCell>
             <TableCell className="w-10">
               {t.createur_nom ? (

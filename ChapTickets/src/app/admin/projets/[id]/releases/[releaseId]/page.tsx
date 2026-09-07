@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { BackButton } from "@/components/back-button";
 import { PrioriteBadge } from "@/components/priorite-badge";
+import { StatutBadge } from "@/components/statut-badge";
 import {
   TICKET_STATUT_LABELS,
   ticketStatutBadgeVariant,
@@ -138,9 +139,7 @@ export default async function ReleaseDetailPage({
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <PrioriteBadge priorite={t.priorite} />
-                        <Badge variant={ticketStatutBadgeVariant(t.statut)}>
-                          {TICKET_STATUT_LABELS[t.statut]}
-                        </Badge>
+                        <StatutBadge statut={t.statut} />
                       </div>
                     </Link>
                   </li>
